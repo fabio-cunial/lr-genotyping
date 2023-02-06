@@ -67,3 +67,7 @@ RUN wget https://github.com/DecodeGenetics/LRcaller/releases/download/v0.2/LRcal
     && chmod +x LRcaller \
     && mv LRcaller /usr/local/bin/LRcaller \
     && LRcaller --help || echo "LRcaller returns an error code when called"
+
+# CUTESV
+RUN pip3 install cuteSV \
+    && cuteSV -h

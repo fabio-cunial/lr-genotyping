@@ -7,6 +7,8 @@ workflow Regenotype {
     input {
         File merged_vcf
         File bam_addresses
+        Boolean use_lrcaller
+        Boolean use_cutesv
         File reference_fa
         File reference_fai
         Int n_nodes
@@ -35,6 +37,8 @@ workflow Regenotype {
             input:
                 chunk = chunk_file,
                 vcf_to_genotype = GetVcfToGenotype.vcf_to_genotype,
+                use_lrcaller = use_lrcaller,
+                use_cutesv = use_cutesv,
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
                 n_cpus = n_cpus,
@@ -123,6 +127,8 @@ task RegenotypeChunk {
     input {
         File chunk
         File vcf_to_genotype
+        Int use_lrcaller
+        Int use_cutesv
         File reference_fa
         File reference_fai
         Int n_cpus
@@ -156,7 +162,12 @@ task RegenotypeChunk {
                     break
                 fi
             done
-            ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} --genotyper joint $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf
+            if [ ~{use_lrcaller} -eq 1 ]; then
+                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} --genotyper joint $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf
+            fi
+            ls -laht
+            tree
+            rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
             echo "FORMAT" > format.txt
             bcftools view -H genotypes.vcf | cut -f 9 >> format.txt
             INDIVIDUAL=$(basename ${BAM_FILE} -s .bam)
