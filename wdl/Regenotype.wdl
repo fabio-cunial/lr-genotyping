@@ -14,6 +14,7 @@ workflow Regenotype {
         Int n_nodes
         Int n_cpus
         Int bam_size_gb
+        String backup_address
     }
     parameter_meta {
         merged_vcf: "The output of the merging step, whose genotypes must be refined. Can be either .vcf or .vcf.gz."
@@ -42,7 +43,8 @@ workflow Regenotype {
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
                 n_cpus = n_cpus,
-                bam_size_gb = bam_size_gb
+                bam_size_gb = bam_size_gb,
+                backup_address = backup_address
         }
     }
     call PasteGenotypedChunks {
@@ -133,6 +135,7 @@ task RegenotypeChunk {
         File reference_fai
         Int n_cpus
         Int bam_size_gb
+        String backup_address
     }
     parameter_meta {
         bam_size_gb: "Upper bound on the size of a single BAM."
@@ -171,8 +174,7 @@ task RegenotypeChunk {
             fi
             
             
-            ADDRESS=~{vcf_to_genotype}
-            gsutil cp genotypes.vcf ${ADDRESS%.vcf}-genotyped.vcf
+            gsutil -m cp genotypes.vcf ~{backup_address}/genotypes.vcf
             
             
             
