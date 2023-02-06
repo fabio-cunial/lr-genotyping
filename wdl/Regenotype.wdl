@@ -169,8 +169,13 @@ task RegenotypeChunk {
                 mkdir ./cutesv_tmp
                 ${TIME_COMMAND} cutesv --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_ cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 -s 3 --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
             fi
-            ls -laht
-            tree
+            
+            
+            ADDRESS=~{vcf_to_genotype}
+            gsutil cp genotypes.vcf ${ADDRESS%.vcf}-genotyped.vcf
+            
+            
+            
             rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
             echo "FORMAT" > format.txt
             bcftools view -H genotypes.vcf | cut -f 9 >> format.txt
