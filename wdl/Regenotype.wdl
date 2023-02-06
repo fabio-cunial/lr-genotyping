@@ -17,7 +17,7 @@ workflow Regenotype {
         merged_vcf: "The output of the merging step, whose genotypes must be refined. Can be either .vcf or .vcf.gz."
         bam_addresses: "File containing a list of bucket addresses."
         n_nodes: "Use this number of nodes to regenotype in parallel."
-        n_cpus: " Lower bound on the number of CPUs per regenotype node."
+        n_cpus: "Lower bound on the number of CPUs per regenotype node."
         bam_size_gb: "Upper bound on the size of a single BAM."
     }
     
@@ -73,7 +73,7 @@ task GetVcfToGenotype {
         N_ROWS=$(wc -l < vcf_header.txt)
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
-        bcftools -H ~{merged_vcf} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
+        bcftools view -H ~{merged_vcf} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
     >>>
     
     output {
@@ -158,10 +158,10 @@ task RegenotypeChunk {
             done
             ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} --genotyper joint $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf
             echo "FORMAT" > format.txt
-            bcftools -H genotypes.vcf | cut -f 9 >> format.txt
+            bcftools view -H genotypes.vcf | cut -f 9 >> format.txt
             INDIVIDUAL=$(basename ${BAM_FILE} -s .bam)
             echo ${INDIVIDUAL} > new_genotypes.txt
-            bcftools -H genotypes.vcf | cut -f 10 >> new_genotypes.txt
+            bcftools view -H genotypes.vcf | cut -f 10 >> new_genotypes.txt
             rm -f genotypes.vcf
             if [ $i -eq 0 ]; then
                 mv new_genotypes.txt genotypes.txt
