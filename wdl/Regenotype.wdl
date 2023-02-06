@@ -17,7 +17,7 @@ workflow Regenotype {
         merged_vcf: "The output of the merging step, whose genotypes must be refined. Can be either .vcf or .vcf.gz."
         bam_addresses: "File containing a list of bucket addresses."
         n_nodes: "Use this number of nodes to regenotype in parallel."
-        n_cpus: "Lower bound on the number of CPUs per regenotype node."
+        n_cpus: " Lower bound on the number of CPUs per regenotype node."
         bam_size_gb: "Upper bound on the size of a single BAM."
     }
     
