@@ -148,7 +148,7 @@ task RegenotypeChunk {
         i="0"
         while read BAM_FILE; do
             while : ; do
-                TEST=$(gsutil -m cp ${BAM_FILE} . && echo 0 || echo 1)
+                TEST=$(gsutil -m cp ${BAM_FILE} ${BAM_FILE}.bai . && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
                     echo "Error downloading file <${BAM_FILE}>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}

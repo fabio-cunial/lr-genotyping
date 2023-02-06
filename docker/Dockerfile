@@ -3,9 +3,33 @@ MAINTAINER Fabio Cunial
 
 
 # OS
-RUN apt-get -y update \
-	&& apt-get -y install git make cmake protobuf-compiler gcc g++ zlib1g-dev libcurl4-openssl-dev liblzma-dev libbz2-dev libdeflate-dev tree liblzma-dev bzip2 wget curl less \
-	&& apt-get clean
+RUN apt-get -qqy update --fix-missing \
+    && apt-get -qqy dist-upgrade \
+    && apt-get install -y --no-install-recommends \
+        zlib1g-dev \
+        liblzma-dev \
+        libbz2-dev \
+        libdeflate-dev \
+        libssl-dev \
+        libcurl4-openssl-dev \
+        apt-transport-https \
+        ca-certificates \
+        tree \
+        gnupg \
+        ssh \
+        time \
+        curl \
+        wget \
+        autotools-dev \
+        autoconf \
+        automake \
+        make \
+        cmake \
+        gcc \
+        g++ \
+        git \
+        bc \
+        python3-pip
 
 # GSUTIL
 ARG gcloud_version=405.0.1
