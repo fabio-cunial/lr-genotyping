@@ -7,8 +7,8 @@ workflow Regenotype {
     input {
         File merged_vcf
         File bam_addresses
-        Boolean use_lrcaller
-        Boolean use_cutesv
+        Int use_lrcaller
+        Int use_cutesv
         File reference_fa
         File reference_fai
         Int n_nodes
