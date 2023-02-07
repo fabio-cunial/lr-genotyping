@@ -40,6 +40,19 @@ RUN wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud
     && yes | ./google-cloud-sdk/install.sh
 ENV PATH=${work_dir}/google-cloud-sdk/bin:${PATH}
 
+# HTSLIB
+ARG htslib_version=1.16
+RUN wget https://github.com/samtools/htslib/releases/download/${htslib_version}/htslib-${htslib_version}.tar.bz2 \
+    && tar xjf htslib-${htslib_version}.tar.bz2 \
+    && rm htslib-${htslib_version}.tar.bz2 \
+    && cd htslib-${htslib_version} \
+    && ./configure \
+    && make \
+    && make install \
+    && cd ${work_dir} \
+    && rm -rf htslib-${htslib_version} \
+    && bgzip --help
+
 # BCFTOOLS
 ARG bcftools_version=1.16
 RUN wget https://github.com/samtools/bcftools/releases/download/${bcftools_version}/bcftools-${bcftools_version}.tar.bz2 \
@@ -69,5 +82,8 @@ RUN wget https://github.com/DecodeGenetics/LRcaller/releases/download/v0.2/LRcal
     && LRcaller --help || echo "LRcaller returns an error code when called"
 
 # CUTESV
-RUN pip3 install cuteSV \
+RUN git clone https://github.com/tjiangHIT/cuteSV.git
+COPY cutesv_setup.py ./cuteSV/setup.py
+RUN cd cuteSV/ \
+    && python setup.py install \
     && cuteSV -h
