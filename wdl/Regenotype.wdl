@@ -129,6 +129,9 @@ task GetChunks {
 # will have to be added to $vcf_to_genotype$ to create the final VCF (such
 # columns include the heading with sample ID).
 #
+# Remark: caller parameters are taken from "Comprehensive evaluation of
+# structural variant genotyping methods based on long-read sequencing data".
+#
 task RegenotypeChunk {
     input {
         File chunk
@@ -156,6 +159,7 @@ task RegenotypeChunk {
         N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
+        CUTESV_MIN_SUPPORTING_READS="2"  # Since we have <=4 reads per haplotype
         
         touch format.txt genotypes.txt
         i="0"
@@ -174,7 +178,7 @@ task RegenotypeChunk {
             fi
             if [ ~{use_cutesv} -eq 1 ]; then
                 mkdir ./cutesv_tmp
-                ${TIME_COMMAND} cutesv --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_ cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 -s 3 --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
+                ${TIME_COMMAND} cutesv --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_ cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
             fi
             N_LINES=$(grep '#' genotypes.vcf | wc -l)
             rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
@@ -245,11 +249,10 @@ task PasteGenotypedChunks {
         mv tmp.txt out_body.txt
         
         # Adding the genotype columns
-        echo ~{sep='\n' genotypes} > genotypes.txt
-        while read FILE; do
+        for FILE in ~{sep=' ' genotypes}; do
             paste out_body.txt ${FILE} > tmp.txt
             mv tmp.txt out_body.txt
-        done < genotypes.txt
+        done
         
         # Building the output VCF
         cat out_header.txt out_body.txt > out.vcf
