@@ -245,7 +245,7 @@ task PasteGenotypedChunks {
         mv tmp.txt out_body.txt
         
         # Adding the genotype columns
-        echo ~{sep='-' genotypes} | tr '-' '\n' > genotypes.txt
+        echo ~{sep='\n' genotypes} > genotypes.txt
         while read FILE; do
             paste out_body.txt ${FILE} > tmp.txt
             mv tmp.txt out_body.txt
