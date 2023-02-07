@@ -180,7 +180,7 @@ task RegenotypeChunk {
             rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
             echo "FORMAT" > format.txt
             tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 9 >> format.txt
-            INDIVIDUAL=$(basename ${BAM_FILE} -s .bam)
+            INDIVIDUAL=$(basename -s .bam ${BAM_FILE})
             echo ${INDIVIDUAL} > new_genotypes.txt
             tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 10 >> new_genotypes.txt
             rm -f genotypes.vcf
