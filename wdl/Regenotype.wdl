@@ -5,7 +5,7 @@ version 1.0
 #
 workflow Regenotype {
     input {
-        File merged_vcf
+        File merged_vcf_gz
         File bam_addresses
         Int use_lrcaller
         Int use_cutesv
@@ -17,7 +17,7 @@ workflow Regenotype {
         String backup_address
     }
     parameter_meta {
-        merged_vcf: "The output of the merging step, whose genotypes must be refined. Can be either .vcf or .vcf.gz."
+        merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
         bam_addresses: "File containing a list of bucket addresses."
         n_nodes: "Use this number of nodes to regenotype in parallel."
         n_cpus: "Lower bound on the number of CPUs per regenotype node."
@@ -26,7 +26,7 @@ workflow Regenotype {
     
     call GetVcfToGenotype {
         input:
-            merged_vcf = merged_vcf
+            merged_vcf_gz = merged_vcf_gz
     }
     call GetChunks {
         input:
@@ -60,26 +60,30 @@ workflow Regenotype {
 }
 
 
-# Outputs a .vcf file that equals $merged_vcf$ but lacks any sample information.
+# Outputs a .vcf file that equals $merged_vcf_gz$ but lacks any sample
+# information.
 #
 task GetVcfToGenotype {
     input {
-        File merged_vcf
+        File merged_vcf_gz
     }
     parameter_meta {
-        merged_vcf: "The output of the merging step, whose genotypes must be refined. Can be either .vcf or .vcf.gz."
+        merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
     }
     
-    Int disk_size_gb = 2*ceil(size(merged_vcf, "GB"))
+    Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB"))
 
     command <<<
         set -euxo pipefail
         
-        grep '#' ~{merged_vcf} > vcf_header.txt
+        VCF_FILE=~{merged_vcf_gz}
+        VCF_FILE=${VCF_FILE%.gz}
+        gunzip ~{merged_vcf_gz}
+        grep '#' ${VCF_FILE} > vcf_header.txt
         N_ROWS=$(wc -l < vcf_header.txt)
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
-        tail -n +$((${N_ROWS} + 1)) ~{merged_vcf} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
+        tail -n +$((${N_ROWS} + 1)) ${VCF_FILE} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
     >>>
     
     output {
