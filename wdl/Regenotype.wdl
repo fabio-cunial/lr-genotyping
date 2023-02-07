@@ -75,11 +75,11 @@ task GetVcfToGenotype {
     command <<<
         set -euxo pipefail
         
-        bcftools view -h ~{merged_vcf} > vcf_header.txt
+        grep '#' ~{merged_vcf} > vcf_header.txt
         N_ROWS=$(wc -l < vcf_header.txt)
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
-        bcftools view -H ~{merged_vcf} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
+        tail -n +$((${N_ROWS} + 1)) ~{merged_vcf} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
     >>>
     
     output {
@@ -172,18 +172,13 @@ task RegenotypeChunk {
                 mkdir ./cutesv_tmp
                 ${TIME_COMMAND} cutesv --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_ cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 -s 3 --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
             fi
-            
-            
-            gsutil -m cp genotypes.vcf ~{backup_address}/genotypes.vcf
-            
-            
-            
+            N_LINES=$(grep '#' genotypes.vcf | wc -l)
             rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
             echo "FORMAT" > format.txt
-            bcftools view -H genotypes.vcf | cut -f 9 >> format.txt
+            tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 9 >> format.txt
             INDIVIDUAL=$(basename ${BAM_FILE} -s .bam)
             echo ${INDIVIDUAL} > new_genotypes.txt
-            bcftools view -H genotypes.vcf | cut -f 10 >> new_genotypes.txt
+            tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 10 >> new_genotypes.txt
             rm -f genotypes.vcf
             if [ $i -eq 0 ]; then
                 mv new_genotypes.txt genotypes.txt
@@ -233,13 +228,13 @@ task PasteGenotypedChunks {
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         
         # Building the VCF header (excluding the column title line).
-        bcftools view -h ~{vcf_to_genotype} > header.txt
+        grep '#' ~{vcf_to_genotype} > header.txt
         N_ROWS=$(wc -l < header.txt)
         head -n $(( ${N_ROWS} - 1 )) header.txt > out_header.txt
         
         # Building the VCF body (including the column title line).
         tail -n 1 header.txt > out_body.txt
-        bcftools view -H ~{vcf_to_genotype} >> out_body.txt
+        tail -n +$(( ${N_ROWS} + 1 )) ~{vcf_to_genotype} >> out_body.txt
         
         # Adding the FORMAT column (assumed to be the same for all chunks).
         paste out_body.txt ~{format} > tmp.txt
