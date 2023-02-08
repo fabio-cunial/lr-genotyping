@@ -132,6 +132,13 @@ task GetChunks {
 # Remark: caller parameters are taken from "Comprehensive evaluation of
 # structural variant genotyping methods based on long-read sequencing data".
 #
+# Resource analysis for a VCF with just chr21 and 22. Node with 17 physical 
+# cores.
+#
+# TASK     | TIME     | RAM   | CORES USED
+# LRcaller | ~15 mins | 1 GB  | 17
+# cutesv   | 
+#
 task RegenotypeChunk {
     input {
         File chunk
@@ -227,6 +234,7 @@ task PasteGenotypedChunks {
     }
 
     Int disk_size_gb = 2*( ceil(size(vcf_to_genotype,"GB")) + ceil(size(genotypes,"GB")) )
+    String first_genotyped_file = genotypes[0]
 
     command <<<
         set -euxo pipefail
@@ -239,6 +247,9 @@ task PasteGenotypedChunks {
         grep '#' ~{vcf_to_genotype} > header.txt
         N_ROWS=$(wc -l < header.txt)
         head -n $(( ${N_ROWS} - 1 )) header.txt > out_header.txt
+        echo "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allelic depths from alignment supporting ref and alt allele and total number of reads\">" >> out_header.txt
+        echo "##FORMAT=<ID=VA,Number=3,Type=Integer,Description=\"Allelic depths from bam file supporting ref and alt allele and total number of reads\">" >> out_header.txt
+        echo "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED-scaled genotype likelihoods\">" >> out_header.txt
         
         # Building the VCF body (including the column title line).
         tail -n 1 header.txt > out_body.txt
