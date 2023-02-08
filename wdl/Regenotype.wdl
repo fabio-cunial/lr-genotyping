@@ -185,7 +185,7 @@ task RegenotypeChunk {
             fi
             else if [ ~{use_cutesv} -eq 1 ]; then
                 mkdir ./cutesv_tmp
-                ${TIME_COMMAND} cutesv --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_ cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
+                ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_ cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
             fi
             N_LINES=$(grep '#' genotypes.vcf | wc -l)
             rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
