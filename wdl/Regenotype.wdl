@@ -26,7 +26,8 @@ workflow Regenotype {
     
     call GetVcfToGenotype {
         input:
-            merged_vcf_gz = merged_vcf_gz
+            merged_vcf_gz = merged_vcf_gz,
+            reference_fa = reference_fa
     }
     call GetChunks {
         input:
@@ -68,6 +69,7 @@ workflow Regenotype {
 task GetVcfToGenotype {
     input {
         File merged_vcf_gz
+        File reference_fa
     }
     parameter_meta {
         merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
@@ -86,10 +88,11 @@ task GetVcfToGenotype {
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
         tail -n +$((${N_ROWS} + 1)) ${VCF_FILE} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
+        python3 /preprocess_vcf.py variants_only.vcf ~{reference_fa} > variants_only_alts_fixed.vcf
     >>>
     
     output {
-        File vcf_to_genotype = "variants_only.vcf"
+        File vcf_to_genotype = "variants_only_alts_fixed.vcf"
     }
     runtime {
         docker: "fcunial/lr-genotyping"

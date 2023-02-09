@@ -87,3 +87,6 @@ COPY cutesv_setup.py ./cuteSV/setup.py
 RUN cd cuteSV/ \
     && python setup.py install \
     && cuteSV -h
+
+# ADDITIONAL FILES
+COPY preprocess_vcf.py .
