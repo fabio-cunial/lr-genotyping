@@ -14,7 +14,7 @@ workflow Regenotype {
         Int n_nodes
         Int n_cpus
         Int bam_size_gb
-        String backup_address
+        Int fix_symbolic_alts
     }
     parameter_meta {
         merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
@@ -22,12 +22,14 @@ workflow Regenotype {
         n_nodes: "Use this number of nodes to regenotype in parallel."
         n_cpus: "Lower bound on the number of CPUs per regenotype node."
         bam_size_gb: "Upper bound on the size of a single BAM."
+        fix_symbolic_alts: "(1/0) Replaces with real sequence every symbolic ALT for a DEL or DUP (DUPs are transformed to INS)."
     }
     
     call GetVcfToGenotype {
         input:
             merged_vcf_gz = merged_vcf_gz,
-            reference_fa = reference_fa
+            reference_fa = reference_fa,
+            fix_symbolic_alts = fix_symbolic_alts
     }
     call GetChunks {
         input:
@@ -44,8 +46,7 @@ workflow Regenotype {
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
                 n_cpus = n_cpus,
-                bam_size_gb = bam_size_gb,
-                backup_address = backup_address
+                bam_size_gb = bam_size_gb
         }
     }
     call PasteGenotypedChunks {
@@ -70,9 +71,11 @@ task GetVcfToGenotype {
     input {
         File merged_vcf_gz
         File reference_fa
+        Int fix_symbolic_alts
     }
     parameter_meta {
         merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
+        fix_symbolic_alts: "(1/0) Replaces with real sequence every symbolic ALT for a DEL or DUP (DUPs are transformed to INS)."
     }
     
     Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB"))
@@ -88,11 +91,14 @@ task GetVcfToGenotype {
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
         tail -n +$((${N_ROWS} + 1)) ${VCF_FILE} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
-        python3 /preprocess_vcf.py variants_only.vcf ~{reference_fa} > variants_only_alts_fixed.vcf
+        if [ ~{fix_symbolic_alts} -eq 1 ]; then
+            python3 /preprocess_vcf.py variants_only.vcf ~{reference_fa} > variants_only_alts_fixed.vcf
+            mv variants_only_alts_fixed.vcf variants_only.vcf
+        fi
     >>>
     
     output {
-        File vcf_to_genotype = "variants_only_alts_fixed.vcf"
+        File vcf_to_genotype = "variants_only.vcf"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
@@ -154,7 +160,6 @@ task RegenotypeChunk {
         File reference_fai
         Int n_cpus
         Int bam_size_gb
-        String backup_address
     }
     parameter_meta {
         bam_size_gb: "Upper bound on the size of a single BAM."
