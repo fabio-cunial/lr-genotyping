@@ -78,7 +78,8 @@ task GetVcfToGenotype {
         fix_symbolic_alts: "(1/0) Replaces with real sequence every symbolic ALT for a DEL or DUP (DUPs are transformed to INS)."
     }
     
-    Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB"))
+    Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB")) + ceil(size(reference_fa, "GB"))
+    Int ram_size_gb = 2*ceil(size(reference_fa, "GB"))
 
     command <<<
         set -euxo pipefail
@@ -102,6 +103,7 @@ task GetVcfToGenotype {
     }
     runtime {
         docker: "fcunial/lr-genotyping"
+        memory: ram_size_gb + " GB"
         disks: "local-disk " + disk_size_gb + " HDD"
         preemptible: 0
     }
