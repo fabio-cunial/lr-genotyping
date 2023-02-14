@@ -8,5 +8,5 @@ workflows:
 - name: Standardize
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/SVTK.wdl
+  primaryDescriptorPath: /wdl/Standardize.wdl
   testParameterFiles:
