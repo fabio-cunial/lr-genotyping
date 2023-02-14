@@ -1,12 +1,34 @@
 version 1.0
 
 
-task Standardize {
+workflow Standardize {
     input {
         File vcf
         File tbi
         File ref_fai
+        String caller
+        String prefix
+    }
+    call Standardize_impl {
+        input:
+            vcf = vcf,
+            tbi = tbi,
+            ref_fai = ref_fai,
+            caller = caller,
+            prefix = prefix
+    }
+    output {
+        File standardized_vcf = Standardize_impl.standardized_vcf
+        File standardized_tbi = Standardize_impl.standardized_tbi
+    }
+}
 
+
+task Standardize_impl {
+    input {
+        File vcf
+        File tbi
+        File ref_fai
         String caller
         String prefix
     }
