@@ -5,3 +5,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/Regenotype.wdl
   testParameterFiles:
+- name: Standardize
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SVTK.wdl
+  testParameterFiles:
