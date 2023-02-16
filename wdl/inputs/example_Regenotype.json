@@ -1,12 +1,12 @@
 {
-    "Regenotype.merged_vcf_gz": "gs://.../cohort.truvari.std.vcf.gz",
-    "Regenotype.bam_addresses": "gs://.../bucket_addresses.txt",
+    "Regenotype.merged_vcf_gz": "test.vcf.gz",
+    "Regenotype.bam_addresses": "addresses.txt",
     "Regenotype.use_lrcaller": 1,
+    "Regenotype.lrcaller_genotyping_model": 1,
     "Regenotype.use_cutesv": 0,
-    "Regenotype.reference_fa": "gs://.../references/GRCh38_noalt/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa",
-    "Regenotype.reference_fai": "gs://.../references/GRCh38_noalt/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai",
+    "Regenotype.reference_fa": "GCA_000001405.15_GRCh38_no_alt_analysis_set.fa",
+    "Regenotype.reference_fai": "GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai",
     "Regenotype.n_nodes": 1,
     "Regenotype.n_cpus": 16,
-    "Regenotype.bam_size_gb": 40,
-    "Regenotype.backup_address": "unused, please disregard"
+    "Regenotype.bam_size_gb": 40
 }

@@ -8,28 +8,27 @@ workflow Regenotype {
         File merged_vcf_gz
         File bam_addresses
         Int use_lrcaller
+        Int lrcaller_genotyping_model
         Int use_cutesv
         File reference_fa
         File reference_fai
         Int n_nodes
         Int n_cpus
         Int bam_size_gb
-        Int fix_symbolic_alts
     }
     parameter_meta {
         merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
         bam_addresses: "File containing a list of bucket addresses."
+        lrcaller_genotyping_model: "Genotyping model: 1=AD, 2=VA, 3=JOINT, 4=PRESENCE, 5=VA_OLD. See https://github.com/DecodeGenetics/LRcaller/blob/144204b0edf95c55f31fdf0fbd4f02f4a36edfc1/algo.hpp#L1179"
         n_nodes: "Use this number of nodes to regenotype in parallel."
         n_cpus: "Lower bound on the number of CPUs per regenotype node."
         bam_size_gb: "Upper bound on the size of a single BAM."
-        fix_symbolic_alts: "(1/0) Replaces with real sequence every symbolic ALT for a DEL or DUP (DUPs are transformed to INS)."
     }
     
     call GetVcfToGenotype {
         input:
             merged_vcf_gz = merged_vcf_gz,
-            reference_fa = reference_fa,
-            fix_symbolic_alts = fix_symbolic_alts
+            reference_fa = reference_fa
     }
     call GetChunks {
         input:
@@ -42,6 +41,7 @@ workflow Regenotype {
                 chunk = chunk_file,
                 vcf_to_genotype = GetVcfToGenotype.vcf_to_genotype,
                 use_lrcaller = use_lrcaller,
+                lrcaller_genotyping_model = lrcaller_genotyping_model,
                 use_cutesv = use_cutesv,
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
@@ -71,11 +71,9 @@ task GetVcfToGenotype {
     input {
         File merged_vcf_gz
         File reference_fa
-        Int fix_symbolic_alts
     }
     parameter_meta {
         merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
-        fix_symbolic_alts: "(1/0) Replaces with real sequence every symbolic ALT for a DEL or DUP (DUPs are transformed to INS)."
     }
     
     Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB")) + ceil(size(reference_fa, "GB"))
@@ -92,17 +90,13 @@ task GetVcfToGenotype {
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
         tail -n +$((${N_ROWS} + 1)) ${VCF_FILE} | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
-        if [ ~{fix_symbolic_alts} -eq 1 ]; then
-            python3 /preprocess_vcf.py variants_only.vcf ~{reference_fa} > variants_only_alts_fixed.vcf
-            mv variants_only_alts_fixed.vcf variants_only.vcf
-        fi
     >>>
     
     output {
         File vcf_to_genotype = "variants_only.vcf"
     }
     runtime {
-        docker: "fcunial/lr-genotyping"
+        docker: "ubuntu:latest"
         memory: ram_size_gb + " GB"
         disks: "local-disk " + disk_size_gb + " HDD"
         preemptible: 0
@@ -157,6 +151,7 @@ task RegenotypeChunk {
         File chunk
         File vcf_to_genotype
         Int use_lrcaller
+        Int lrcaller_genotyping_model
         Int use_cutesv
         File reference_fa
         File reference_fai
@@ -165,6 +160,7 @@ task RegenotypeChunk {
     }
     parameter_meta {
         bam_size_gb: "Upper bound on the size of a single BAM."
+        lrcaller_genotyping_model: "Genotyping model: 1=AD, 2=VA, 3=JOINT, 4=PRESENCE, 5=VA_OLD. See https://github.com/DecodeGenetics/LRcaller/blob/144204b0edf95c55f31fdf0fbd4f02f4a36edfc1/algo.hpp#L1179"
     }
     
     Int ram_size_gb = n_cpus*8 + 2*( ceil(size(vcf_to_genotype,"GB")) + bam_size_gb + ceil(size(reference_fa,"GB")) )
@@ -193,7 +189,7 @@ task RegenotypeChunk {
                 fi
             done
             if [ ~{use_lrcaller} -eq 1 ]; then
-                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} --genotyper joint $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf    
+                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf    
             elif [ ~{use_cutesv} -eq 1 ]; then
                 rm -rf ./cutesv_tmp; mkdir ./cutesv_tmp
                 ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
@@ -204,7 +200,7 @@ task RegenotypeChunk {
             tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 9 >> format.txt
             INDIVIDUAL=$(basename -s .bam ${BAM_FILE})
             echo ${INDIVIDUAL} > new_genotypes.txt
-            tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 10 >> new_genotypes.txt
+            tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f $(( 9 + ~{lrcaller_genotyping_model})) >> new_genotypes.txt
             rm -f genotypes.vcf
             if [ $i -eq 0 ]; then
                 mv new_genotypes.txt genotypes.txt
