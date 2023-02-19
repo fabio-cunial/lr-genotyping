@@ -41,9 +41,9 @@ task Standardize_impl {
         svtk standardize \
             --include-reference-sites \
             --contigs ~{ref_fai} \
-            --prefix ~{prefix} ~{vcf} - ~{caller} | \
-            bcftools sort /dev/stdin -o ~{prefix}.truvari.std.vcf.gz -O z
-
+            --prefix ~{prefix} ~{vcf} - ~{caller} > standardized.vcf
+        tail -n 100 standardized.vcf
+        bcftools sort standardized.vcf -o ~{prefix}.truvari.std.vcf.gz -O z
         tabix ~{prefix}.truvari.std.vcf.gz
     >>>
 
