@@ -33,15 +33,15 @@ task Standardize_impl {
         String prefix
     }
 
-    Int disk_size = 8*ceil(size([vcf, tbi, ref_fai], "GB")) + 1
+    Int disk_size = 20*ceil(size([vcf, tbi, ref_fai], "GB")) + 1
 
     command <<<
         set -euxo pipefail
-
+        
         svtk standardize \
             --include-reference-sites \
             --contigs ~{ref_fai} \
-            --prefix ~{prefix} ~{vcf} - ~{caller} > standardized.vcf
+            --prefix ~{prefix} ~{vcf} standardized.vcf ~{caller}
         tail -n 100 standardized.vcf
         bcftools sort standardized.vcf -o ~{prefix}.truvari.std.vcf.gz -O z
         tabix ~{prefix}.truvari.std.vcf.gz
