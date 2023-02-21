@@ -88,5 +88,12 @@ RUN cd cuteSV/ \
     && python setup.py install \
     && cuteSV -h
 
+# SNIFFLES2
+ARG sniffles2_version=2.0.7
+RUN conda update conda \
+    && conda install -c bioconda -c conda-forge -c defaults sniffles=${sniffles2_version} \
+    && conda clean --packages --tempfiles --logfiles \
+    && sniffles --help
+
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .

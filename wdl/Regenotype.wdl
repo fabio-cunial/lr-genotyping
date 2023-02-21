@@ -10,6 +10,7 @@ workflow Regenotype {
         Int use_lrcaller
         Int lrcaller_genotyping_model
         Int use_cutesv
+        Int use_sniffles2
         File reference_fa
         File reference_fai
         Int n_nodes
@@ -43,6 +44,7 @@ workflow Regenotype {
                 use_lrcaller = use_lrcaller,
                 lrcaller_genotyping_model = lrcaller_genotyping_model,
                 use_cutesv = use_cutesv,
+                use_sniffles2 = use_sniffles2,
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
                 n_cpus = n_cpus,
@@ -153,6 +155,7 @@ task RegenotypeChunk {
         Int use_lrcaller
         Int lrcaller_genotyping_model
         Int use_cutesv
+        Int use_sniffles2
         File reference_fa
         File reference_fai
         Int n_cpus
@@ -189,10 +192,12 @@ task RegenotypeChunk {
                 fi
             done
             if [ ~{use_lrcaller} -eq 1 ]; then
-                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf    
+                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf
             elif [ ~{use_cutesv} -eq 1 ]; then
                 rm -rf ./cutesv_tmp; mkdir ./cutesv_tmp
                 ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
+            elif [ ~{use_sniffles2} -eq 1 ]; then
+                ${TIME_COMMAND} sniffles --threads ${N_THREADS} --genotype-vcf ~{vcf_to_genotype} --input $(basename ${BAM_FILE}) --vcf genotypes.vcf
             fi
             N_LINES=$(grep '#' genotypes.vcf | wc -l)
             rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
@@ -247,7 +252,7 @@ task PasteGenotypedChunks {
         format: "Any of the format files returned by $RegenotypeChunk$ (they are assumed to be all equal)."
     }
 
-    Int disk_size_gb = 2*( ceil(size(vcf_to_genotype,"GB")) + ceil(size(genotypes,"GB")) )
+    Int disk_size_gb = 10*( ceil(size(vcf_to_genotype,"GB")) + ceil(size(genotypes,"GB")) )
     String first_genotyped_file = genotypes[0]
 
     command <<<
