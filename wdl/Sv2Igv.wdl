@@ -74,7 +74,7 @@ task Sv2IgvImpl {
                 fi
             done
         else
-            i="0"
+            i="0"; FILES=""
             while read BAM_FILE; do
                 while : ; do
                     TEST2=$(gsutil -m cp ${BAM_FILE} ${BAM_FILE}.bai . && echo 0 || echo 1)
@@ -88,12 +88,9 @@ task Sv2IgvImpl {
                 LOCAL_BAM=$(basename ${BAM_FILE})
                 samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${LOCAL_BAM}
                 rm -f ${LOCAL_BAM}
+                FILES="${FILES} alignments_${i}.bam"
                 i=$(( $i + 1 ))
             done < ~{bam_addresses}
-            FILES=""
-            for j in $(seq 0 $i); do
-                FILES="${FILES} alignments_${j}.bam"
-            done
             ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
             rm -f ${FILES}
             while : ; do
