@@ -55,6 +55,7 @@ task Sv2IgvImpl {
 
     command <<<
         set -euxo pipefail
+        export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
         
         GSUTIL_DELAY_S="600"
         TIME_COMMAND="/usr/bin/time --verbose"
