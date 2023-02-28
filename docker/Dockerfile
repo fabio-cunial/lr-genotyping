@@ -38,7 +38,7 @@ RUN wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud
     && tar -xf google-cloud-cli-${gcloud_version}-linux-x86_64.tar.gz \
     && rm -f google-cloud-cli-${gcloud_version}-linux-x86_64.tar.gz \
     && yes | ./google-cloud-sdk/install.sh
-ENV PATH=${work_dir}/google-cloud-sdk/bin:${PATH}
+ENV PATH=$(pwd)/google-cloud-sdk/bin:${PATH}
 
 # HTSLIB
 ARG htslib_version=1.16
@@ -49,9 +49,22 @@ RUN wget https://github.com/samtools/htslib/releases/download/${htslib_version}/
     && ./configure \
     && make \
     && make install \
-    && cd ${work_dir} \
+    && cd .. \
     && rm -rf htslib-${htslib_version} \
     && bgzip --help
+
+# SAMTOOLS
+ARG samtools_version=1.16.1
+RUN wget https://github.com/samtools/samtools/releases/download/${samtools_version}/samtools-${samtools_version}.tar.bz2 \
+    && tar xjf samtools-${samtools_version}.tar.bz2 \
+    && rm samtools-${samtools_version}.tar.bz2 \
+    && cd samtools-${samtools_version} \
+    && ./configure --without-curses \
+    && make \
+    && make install \
+    && cd ${work_dir} \
+    && rm -rf samtools-${samtools_version} \
+    && samtools --help
 
 # BCFTOOLS
 ARG bcftools_version=1.16
@@ -62,7 +75,7 @@ RUN wget https://github.com/samtools/bcftools/releases/download/${bcftools_versi
     && ./configure --without-curses \
     && make \
     && make install \
-    && cd ${work_dir} \
+    && cd .. \
     && rm -rf bcftools-${bcftools_version} \
     && bcftools --help
 
@@ -94,6 +107,9 @@ RUN conda update conda \
     && conda install -c bioconda -c conda-forge -c defaults sniffles=${sniffles2_version} \
     && conda clean --packages --tempfiles --logfiles \
     && sniffles --help
+
+# IGV-REPORTS
+RUN pip install igv-reports
 
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .

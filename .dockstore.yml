@@ -10,3 +10,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/Standardize.wdl
   testParameterFiles:
+- name: Sv2Igv
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/Sv2Igv.wdl
+  testParameterFiles:
