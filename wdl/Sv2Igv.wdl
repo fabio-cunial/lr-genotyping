@@ -104,7 +104,7 @@ task Sv2IgvImpl {
             done
         fi
         samtools index -@ ${N_THREADS} all.bam
-        ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 1000 --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
+        ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
     output {
