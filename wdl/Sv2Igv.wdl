@@ -94,7 +94,7 @@ task Sv2IgvImpl {
             ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
             rm -f ${FILES}
             while : ; do
-                TEST2=$(gsutil -m cp all.bam ~{bucket_dir}/all.bam . && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp all.bam ~{bucket_dir}/all.bam && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
                     echo "Error uploading file <all.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
