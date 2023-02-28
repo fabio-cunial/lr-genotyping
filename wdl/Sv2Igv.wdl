@@ -75,19 +75,8 @@ task Sv2IgvImpl {
             done
         else
             i="0"; FILES=""
-            while read BAM_FILE; do
-                while : ; do
-                    TEST2=$(gsutil -m cp ${BAM_FILE} ${BAM_FILE}.bai . && echo 0 || echo 1)
-                    if [ ${TEST2} -eq 1 ]; then
-                        echo "Error downloading file <${BAM_FILE}>. Trying again..."
-                        sleep ${GSUTIL_DELAY_S}
-                    else
-                        break
-                    fi
-                done
-                LOCAL_BAM=$(basename ${BAM_FILE})
-                samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${LOCAL_BAM}
-                rm -f ${LOCAL_BAM}
+            while read BAM_FILE; do                
+                samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE}
                 FILES="${FILES} alignments_${i}.bam"
                 i=$(( $i + 1 ))
             done < ~{bam_addresses}
@@ -104,7 +93,7 @@ task Sv2IgvImpl {
             done
         fi
         samtools index -@ ${N_THREADS} all.bam
-        ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
+        ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
     output {
