@@ -38,7 +38,7 @@ RUN wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud
     && tar -xf google-cloud-cli-${gcloud_version}-linux-x86_64.tar.gz \
     && rm -f google-cloud-cli-${gcloud_version}-linux-x86_64.tar.gz \
     && yes | ./google-cloud-sdk/install.sh
-ENV PATH=$(pwd)/google-cloud-sdk/bin:${PATH}
+ENV PATH=/google-cloud-sdk/bin:${PATH}
 
 # HTSLIB
 ARG htslib_version=1.16
