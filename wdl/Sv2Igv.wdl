@@ -9,6 +9,7 @@ workflow Sv2Igv {
         File regions_bed
         File reference_fa
         File reference_fai
+        String bucket_dir
         Int n_cpus
         Int bam_size_gb
     }
@@ -23,6 +24,7 @@ workflow Sv2Igv {
             regions_bed = regions_bed,
             reference_fa = reference_fa,
             reference_fai = reference_fai,
+            bucket_dir = bucket_dir,
             n_cpus = n_cpus,
             bam_size_gb = bam_size_gb
     }
@@ -40,6 +42,7 @@ task Sv2IgvImpl {
         File regions_bed
         File reference_fa
         File reference_fai
+        String bucket_dir
         Int n_cpus
         Int bam_size_gb
     }
@@ -59,28 +62,51 @@ task Sv2IgvImpl {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         
-        i="0"
-        while read BAM_FILE; do
+        TEST=$(gsutil -q stat ~{bucket_dir}/all.bam && echo 0 || echo 1)
+        if [ ${TEST} -eq 0 ]; then
             while : ; do
-                TEST=$(gsutil -m cp ${BAM_FILE} ${BAM_FILE}.bai . && echo 0 || echo 1)
+                TEST=$(gsutil -m cp ~{bucket_dir}/all.bam . && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
-                    echo "Error downloading file <${BAM_FILE}>. Trying again..."
+                    echo "Error downloading file <~{bucket_dir}/all.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
                     break
                 fi
             done
-            LOCAL_BAM=$(basename ${BAM_FILE})
-            samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${LOCAL_BAM}
-            rm -f ${LOCAL_BAM}
-            i=$(( $i + 1 ))
-        done < ~{bam_addresses}
-        FILES=""
-        for j in $(seq 0 $i); do
-            FILES="${FILES} alignments_${j}.bam"
-        done
-        ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
-        rm -f ${FILES}
+        else
+            i="0"
+            while read BAM_FILE; do
+                while : ; do
+                    TEST=$(gsutil -m cp ${BAM_FILE} ${BAM_FILE}.bai . && echo 0 || echo 1)
+                    if [ ${TEST} -eq 1 ]; then
+                        echo "Error downloading file <${BAM_FILE}>. Trying again..."
+                        sleep ${GSUTIL_DELAY_S}
+                    else
+                        break
+                    fi
+                done
+                LOCAL_BAM=$(basename ${BAM_FILE})
+                samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${LOCAL_BAM}
+                rm -f ${LOCAL_BAM}
+                i=$(( $i + 1 ))
+            done < ~{bam_addresses}
+            FILES=""
+            for j in $(seq 0 $i); do
+                FILES="${FILES} alignments_${j}.bam"
+            done
+            ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
+            rm -f ${FILES}
+            while : ; do
+                TEST=$(gsutil -m cp all.bam ~{bucket_dir}/all.bam . && echo 0 || echo 1)
+                if [ ${TEST} -eq 1 ]; then
+                    echo "Error uploading file <all.bam>. Trying again..."
+                    sleep ${GSUTIL_DELAY_S}
+                else
+                    break
+                fi
+            done
+        fi
+        samtools index -@ ${N_THREADS} all.bam
         ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 1000 --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
