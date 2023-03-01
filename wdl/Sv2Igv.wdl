@@ -63,12 +63,13 @@ task Sv2IgvImpl {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         
-        TEST1=$(gsutil -q stat ~{bucket_dir}/all.bam && echo 0 || echo 1)
+        BED_NAME=$(basename ~{regions_bed} -s .bed)
+        TEST1=$(gsutil -q stat ~{bucket_dir}/${BED_NAME}.bam && echo 0 || echo 1)
         if [ ${TEST1} -eq 0 ]; then
             while : ; do
-                TEST2=$(gsutil -m cp ~{bucket_dir}/all.bam . && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp ~{bucket_dir}/${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
-                    echo "Error downloading file <~{bucket_dir}/all.bam>. Trying again..."
+                    echo "Error downloading file <~{bucket_dir}/${BED_NAME}.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
                     break
@@ -77,14 +78,14 @@ task Sv2IgvImpl {
         else
             i="0"; FILES=""
             while read BAM_FILE; do                
-                samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE}
+                ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE}
                 FILES="${FILES} alignments_${i}.bam"
                 i=$(( $i + 1 ))
             done < ~{bam_addresses}
             ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
             rm -f ${FILES}
             while : ; do
-                TEST2=$(gsutil -m cp all.bam ~{bucket_dir}/all.bam && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp ./all.bam ~{bucket_dir}/${BED_NAME}.bam && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
                     echo "Error uploading file <all.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
@@ -93,7 +94,7 @@ task Sv2IgvImpl {
                 fi
             done
         fi
-        samtools index -@ ${N_THREADS} all.bam
+        ${TIME_COMMAND} samtools index -@ ${N_THREADS} all.bam
         ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
