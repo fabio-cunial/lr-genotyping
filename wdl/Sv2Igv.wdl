@@ -63,7 +63,7 @@ task Sv2IgvImpl {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         
-        BED_NAME=$(basename ~{regions_bed} -s .bed)
+        BED_NAME=$(basename -s .bed ~{regions_bed})
         TEST1=$(gsutil -q stat ~{bucket_dir}/${BED_NAME}.bam && echo 0 || echo 1)
         if [ ${TEST1} -eq 0 ]; then
             while : ; do
