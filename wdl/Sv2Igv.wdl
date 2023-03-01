@@ -51,7 +51,7 @@ task Sv2IgvImpl {
     }
     
     Int ram_size_gb = 64  # Arbitrary
-    Int disk_size_gb = 100*bam_size_gb + ceil(size(reference_fa,"GB"))
+    Int disk_size_gb = 128  # Arbitrary
 
     command <<<
         set -euxo pipefail
