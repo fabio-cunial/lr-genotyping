@@ -78,7 +78,11 @@ task Sv2IgvImpl {
         else
             i="0"; FILES=""
             while read BAM_FILE; do                
-                ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE}
+                TEST2=$(samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE} && echo 0 || echo 1)
+                if [ ${TEST2} -eq 1 ]; then
+                    export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+                    ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE}
+                fi
                 FILES="${FILES} alignments_${i}.bam"
                 i=$(( $i + 1 ))
             done < ~{bam_addresses}
