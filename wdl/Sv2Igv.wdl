@@ -63,13 +63,14 @@ task Sv2IgvImpl {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         
+        BAM_NAME=$(basename -s .bam ~{bam_addresses})
         BED_NAME=$(basename -s .bed ~{regions_bed})
-        TEST1=$(gsutil -q stat ~{bucket_dir}/${BED_NAME}.bam && echo 0 || echo 1)
+        TEST1=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
         if [ ${TEST1} -eq 0 ]; then
             while : ; do
-                TEST2=$(gsutil -m cp ~{bucket_dir}/${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
-                    echo "Error downloading file <~{bucket_dir}/${BED_NAME}.bam>. Trying again..."
+                    echo "Error downloading file <~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
                     break
@@ -89,7 +90,7 @@ task Sv2IgvImpl {
             ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
             rm -f ${FILES}
             while : ; do
-                TEST2=$(gsutil -m cp ./all.bam ~{bucket_dir}/${BED_NAME}.bam && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp ./all.bam ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
                     echo "Error uploading file <all.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
