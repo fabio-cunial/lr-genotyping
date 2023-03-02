@@ -29,7 +29,7 @@ workflow Sv2Igv {
             bam_size_gb = bam_size_gb
     }
     output {
-        File report = Sv2IgvImpl.report
+        #File report = Sv2IgvImpl.report
     }
 }
 
