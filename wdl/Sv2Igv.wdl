@@ -127,10 +127,10 @@ task Sv2IgvImpl {
         echo "maxPanelHeight ${IMAGE_HEIGHT}" >> ${IGV_SCRIPT}
         i="0"
         while read SV; do
-            CHR=$(echo ${SV} | cut -f 1)
-            START=$(echo ${SV} | cut -f 2)
+            CHR=$(echo '${SV}' | cut -f 1)
+            START=$(echo '${SV}' | cut -f 2)
             START=$(( ${START}-${HORIZONTAL_SLACK} ))
-            END=$(echo ${SV} | cut -f 3)
+            END=$(echo '${SV}' | cut -f 3)
             END=$(( ${END}+${HORIZONTAL_SLACK} ))
             echo "goto ${CHR}:${START}-${END}" >> ${IGV_SCRIPT}
             echo "sort base" >> ${IGV_SCRIPT}
