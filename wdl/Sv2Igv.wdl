@@ -117,7 +117,7 @@ task Sv2IgvImpl {
         # Printing one image per SV
         IMAGE_HEIGHT="10500"
         HORIZONTAL_SLACK="10000"
-        FIGURES_DIR="${pwd}/figures"
+        FIGURES_DIR="figures"
         rm -rf ${FIGURES_DIR}; mkdir ${FIGURES_DIR}
         IGV_SCRIPT="script.txt"
         echo "new" > ${IGV_SCRIPT}
