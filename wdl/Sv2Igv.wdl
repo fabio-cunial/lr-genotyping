@@ -50,7 +50,7 @@ task Sv2IgvImpl {
         bam_size_gb: "Upper bound on the size of a single BAM."
     }
     
-    Int ram_size_gb = 64  # Arbitrary
+    Int ram_size_gb = n_cpus*4  # Arbitrary
     Int disk_size_gb = 128  # Arbitrary
 
     command <<<
@@ -63,35 +63,48 @@ task Sv2IgvImpl {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         
+        function downloadThread() {
+            local CHUNK_FILE=$1
+            
+            ID=${CHUNK_FILE#chunk_}
+            i="0"
+            while read REMOTE_BAM; do 
+                TEST=$(samtools view --threads 1 --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${ID}_${i}.bam ${REMOTE_BAM} && echo 0 || echo 1)
+                if [ ${TEST} -eq 1 ]; then
+                    export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+                    ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${ID}_${i}.bam ${REMOTE_BAM}
+                fi
+                i=$(( ${i}+1 ))
+            done < ${CHUNK_FILE}
+        }
+        
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
         BED_NAME=$(basename -s .bed ~{regions_bed})
-        TEST1=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
-        if [ ${TEST1} -eq 0 ]; then
-            while : ; do
-                TEST2=$(gsutil -m cp ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
-                if [ ${TEST2} -eq 1 ]; then
-                    echo "Error downloading file <~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam>. Trying again..."
-                    sleep ${GSUTIL_DELAY_S}
-                else
-                    break
-                fi
-            done
+        TEST=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
+        if [ ${TEST} -eq 1 ]; then
+            :
+            #while : ; do
+            #    TEST2=$(gsutil -m cp ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
+            #    if [ ${TEST2} -eq 1 ]; then
+            #        echo "Error downloading file <~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam>. Trying again..."
+            #        sleep ${GSUTIL_DELAY_S}
+            #    else
+            #        break
+            #    fi
+            #done
         else
-            i="0"; FILES=""
-            while read BAM_FILE; do                
-                TEST2=$(samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE} && echo 0 || echo 1)
-                if [ ${TEST2} -eq 1 ]; then
-                    export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-                    ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${i}.bam ${BAM_FILE}
-                fi
-                FILES="${FILES} alignments_${i}.bam"
-                i=$(( $i + 1 ))
-            done < ~{bam_addresses}
-            ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam ${FILES}
-            rm -f ${FILES}
+            N_ROWS=$(wc -l < ~{bam_addresses})
+            N_ROWS_PER_CHUNK=$(( ${N_ROWS}/${N_THREADS} ))
+            split -l ${N_ROWS_PER_CHUNK} ~{bam_addresses} chunk_
+            for CHUNK in chunk_*; do
+                downloadThread ${CHUNK} &
+            done
+            wait
+            ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam alignments_*.bam
+            rm -f alignments_*.bam
             while : ; do
-                TEST2=$(gsutil -m cp ./all.bam ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
-                if [ ${TEST2} -eq 1 ]; then
+                TEST=$(gsutil -m cp ./all.bam ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
+                if [ ${TEST} -eq 1 ]; then
                     echo "Error uploading file <all.bam>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
