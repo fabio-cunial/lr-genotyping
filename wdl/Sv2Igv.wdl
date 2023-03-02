@@ -61,7 +61,7 @@ task Sv2IgvImpl {
         TIME_COMMAND="/usr/bin/time --verbose"
         N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
-        N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
+        N_THREADS=$(( 2 * ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))  # 2: Trying to use hyperthreading as well.
         
         function downloadThread() {
             local CHUNK_FILE=$1
@@ -81,7 +81,7 @@ task Sv2IgvImpl {
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
         BED_NAME=$(basename -s .bed ~{regions_bed})
         TEST=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
-        if [ ${TEST} -eq 1 ]; then
+        if [ ${TEST} -eq 0 ]; then
             :
             #while : ; do
             #    TEST2=$(gsutil -m cp ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
