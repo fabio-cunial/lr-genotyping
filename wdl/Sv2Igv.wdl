@@ -99,12 +99,12 @@ task Sv2IgvImpl {
                 fi
             done
         fi
-        ${TIME_COMMAND} samtools index -@ ${N_THREADS} all.bam
-        ${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
+        #${TIME_COMMAND} samtools index -@ ${N_THREADS} all.bam
+        #${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
     output {
-        File report = "report.html"
+        #File report = "report.html"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
