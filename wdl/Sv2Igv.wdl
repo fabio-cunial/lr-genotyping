@@ -156,7 +156,7 @@ task Sv2IgvImpl {
         FIGURES_DIR_MERGED="figures_merged_2"
         ${TIME_COMMAND} bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam all.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_MERGED} \
             -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
-            -show_soft_clipped \
+            -show_soft_clipped
         tar -czvf report_merged_2.tar.gz ${FIGURES_DIR_MERGED}
         
         
