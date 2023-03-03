@@ -77,6 +77,7 @@ task Sv2IgvImpl {
                     export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
                     ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output alignments_${ID}_${i}.bam ${REMOTE_BAM}
                 fi
+                samtools index alignments_${ID}_${i}.bam
                 echo -e "alignments_${ID}_${i}.bam\t$(basename -s .bam ${REMOTE_BAM})" >> ${BAM_LIST}
                 i=$(( ${i}+1 ))
             done < ${CHUNK_FILE}
