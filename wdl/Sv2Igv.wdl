@@ -29,7 +29,9 @@ workflow Sv2Igv {
             bam_size_gb = bam_size_gb
     }
     output {
-        #File report = Sv2IgvImpl.report
+        File report_merged_1 = Sv2IgvImpl.report_merged_1
+        File report_distinct = Sv2IgvImpl.report_distinct
+        File report_merged_2 = Sv2IgvImpl.report_merged_2
     }
 }
 
@@ -56,6 +58,8 @@ task Sv2IgvImpl {
     command <<<
         set -euxo pipefail
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
+        Xvfb :1 &
+        export DISPLAY=":1"
         
         GSUTIL_DELAY_S="600"
         TIME_COMMAND="/usr/bin/time --verbose"
@@ -81,12 +85,12 @@ task Sv2IgvImpl {
         # Building the merged BAM across all samples and SVs
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
         BED_NAME=$(basename -s .bed ~{regions_bed})
-        TEST=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
+        TEST=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}/all.bam && echo 0 || echo 1)
         if [ ${TEST} -eq 0 ]; then
             while : ; do
-                TEST2=$(gsutil -m cp ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp '~{bucket_dir}/${BAM_NAME}_${BED_NAME}/*.bam' . && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
-                    echo "Error downloading file <~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam>. Trying again..."
+                    echo "Error downloading BAM files at <~{bucket_dir}/${BAM_NAME}_${BED_NAME}/>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
                     break
@@ -101,11 +105,10 @@ task Sv2IgvImpl {
             done
             wait
             ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam alignments_*.bam
-            rm -f alignments_*.bam
             while : ; do
-                TEST=$(gsutil -m cp ./all.bam ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
+                TEST=$(gsutil -m cp './*.bam' ~{bucket_dir}/${BAM_NAME}_${BED_NAME}/ && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
-                    echo "Error uploading file <all.bam>. Trying again..."
+                    echo "Error uploading BAM files. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
                     break
@@ -114,14 +117,14 @@ task Sv2IgvImpl {
         fi
         ${TIME_COMMAND} samtools index -@ ${N_THREADS} all.bam
         
-        # Printing one image per SV
+        # Printing the union of reads from all individuals (one image per SV).
         IMAGE_HEIGHT="10500"
         HORIZONTAL_SLACK="10000"
-        FIGURES_DIR="figures"
-        rm -rf ${FIGURES_DIR}; mkdir ${FIGURES_DIR}
-        IGV_SCRIPT="script.txt"
+        FIGURES_DIR_MERGED="figures_merged_1"
+        rm -rf ${FIGURES_DIR_MERGED}; mkdir ${FIGURES_DIR_MERGED}
+        IGV_SCRIPT="script.txt"; BAMSNAP_BED="bamsnap.bed"
         echo "new" > ${IGV_SCRIPT}
-        echo "snapshotDirectory ${FIGURES_DIR}" >> ${IGV_SCRIPT}
+        echo "snapshotDirectory ${FIGURES_DIR_MERGED}" >> ${IGV_SCRIPT}
         echo "load all.bam" >> ${IGV_SCRIPT}
         echo "genome ~{reference_fa}" >> ${IGV_SCRIPT}
         echo "maxPanelHeight ${IMAGE_HEIGHT}" >> ${IGV_SCRIPT}
@@ -137,18 +140,43 @@ task Sv2IgvImpl {
             echo "sort base" >> ${IGV_SCRIPT}
             echo "squish" >> ${IGV_SCRIPT}
             echo "snapshot sv-${i}.png" >> ${IGV_SCRIPT}
+            echo "${CHR}\t${START}\t${END}" >> ${BAMSNAP_BED}
             i=$(( ${i}+1 ))
         done < regions_prime.txt
         echo "exit" >> ${IGV_SCRIPT}
         cat ${IGV_SCRIPT}
         python /IGV-snapshot-automator/make_IGV_snapshots.py -mem $(( ~{ram_size_gb}-4 )) -onlysnap ${IGV_SCRIPT} all.bam
-        tar -czvf report.tar.gz ${FIGURES_DIR}
+        tar -czvf report_merged_1.tar.gz ${FIGURES_DIR_MERGED}
+        
+        # Printing reads from different individuals separately in an HTML report
+#        FIGURES_DIR_DISTINCT="figures_distinct"
+#        bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam alignments_*.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_DISTINCT} \
+#            -separated_bam \
+#            -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
+#            -show_soft_clipped \
+#        tar -czvf report_distinct.tar.gz ${FIGURES_DIR_DISTINCT}
+        
+        # Printing reads from different individuals (one image per SV).
+#        FIGURES_DIR_MERGED="figures_merged_2"
+#        bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam alignments_*.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_MERGED} \
+#            -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
+#            -show_soft_clipped \
+#        tar -czvf report_merged_2.tar.gz ${FIGURES_DIR_MERGED}
+        
+        
+        
+        
+        
+        
+        touch report_distinct.tar.gz report_merged_2.tar.gz
         
         #${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
     output {
-        File report = "report.tar.gz"
+        File report_merged_1 = "report_merged_1.tar.gz"
+        File report_distinct = "report_distinct.tar.gz"
+        File report_merged_2 = "report_merged_2.tar.gz"
     }
     runtime {
         docker: "fcunial/lr-genotyping"

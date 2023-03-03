@@ -29,9 +29,14 @@ RUN apt-get -qqy update --fix-missing \
         g++ \
         git \
         bc \
+        xorg \
+        openbox \
         xvfb \
+        x11-utils \
+        xauth \
         unzip \
-        python3-pip
+        python3-pip \
+        default-jre
 
 # GSUTIL
 ARG gcloud_version=405.0.1
@@ -117,6 +122,10 @@ RUN pip install igv-reports
 RUN git clone https://github.com/stevekm/IGV-snapshot-automator.git \
     && cd IGV-snapshot-automator \
     && make install
+
+# BAMSNAP
+RUN pip install bamsnap \
+    && bamsnap -h
 
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
