@@ -60,6 +60,8 @@ task Sv2IgvImpl {
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
         Xvfb :1 &
         export DISPLAY=":1"
+        CHR21_LENGTH="46709983"
+        CHR22_LENGTH="50818468"
         
         GSUTIL_DELAY_S="600"
         TIME_COMMAND="/usr/bin/time --verbose"
@@ -134,8 +136,19 @@ task Sv2IgvImpl {
             CHR=$(echo ${SV} | cut -d , -f 1)
             START=$(echo ${SV} | cut -d , -f 2)
             START=$(( ${START}-${HORIZONTAL_SLACK} ))
+            if [ ${START} -lt 1 ]; then
+                START="1"
+            fi
             END=$(echo ${SV} | cut -d , -f 3)
             END=$(( ${END}+${HORIZONTAL_SLACK} ))
+            if [ ${END} -le ${START} ]; then
+                END=$(( ${START}+1 ))
+            fi
+            if [ ${CHR} = "chr21" -a ${END} -gt ${CHR21_LENGTH} ]; then
+                END=$(( ${CHR21_LENGTH} ))
+            elif [ ${CHR} = "chr22" -a ${END} -gt ${CHR22_LENGTH} ]; then
+                END=$(( ${CHR22_LENGTH} ))
+            fi
             echo "goto ${CHR}:${START}-${END}" >> ${IGV_SCRIPT}
             echo "sort base" >> ${IGV_SCRIPT}
             echo "squish" >> ${IGV_SCRIPT}
