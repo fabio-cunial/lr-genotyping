@@ -125,20 +125,20 @@ task Sv2IgvImpl {
         echo "load all.bam" >> ${IGV_SCRIPT}
         echo "genome ~{reference_fa}" >> ${IGV_SCRIPT}
         echo "maxPanelHeight ${IMAGE_HEIGHT}" >> ${IGV_SCRIPT}
+        tr '\t' ',' < ~{regions_bed} > regions_prime.txt
         i="0"
         while read SV; do
-            echo ${SV} > sv.txt
-            CHR=$(cut -f 1 sv.txt)
-            START=$(cut -f 2 sv.txt)
+            CHR=$(echo ${SV} | cut -d , -f 1)
+            START=$(echo ${SV} | cut -d , -f 2)
             START=$(( ${START}-${HORIZONTAL_SLACK} ))
-            END=$(cut -f 3 sv.txt)
+            END=$(echo ${SV} | cut -d , -f 3)
             END=$(( ${END}+${HORIZONTAL_SLACK} ))
             echo "goto ${CHR}:${START}-${END}" >> ${IGV_SCRIPT}
             echo "sort base" >> ${IGV_SCRIPT}
             echo "squish" >> ${IGV_SCRIPT}
             echo "snapshot sv-${i}.png" >> ${IGV_SCRIPT}
             i=$(( ${i}+1 ))
-        done < ~{regions_bed}
+        done < regions_prime.txt
         echo "exit" >> ${IGV_SCRIPT}
         cat ${IGV_SCRIPT}
         python ./IGV-snapshot-automator/make_IGV_snapshots.py -mem $(( ~{ram_size_gb}-4 )) -onlysnap ${IGV_SCRIPT}
