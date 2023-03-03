@@ -129,3 +129,4 @@ RUN pip install bamsnap \
 
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
+COPY make_IGV_snapshots.py /IGV-snapshot-automator
