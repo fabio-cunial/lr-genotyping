@@ -141,7 +141,7 @@ task Sv2IgvImpl {
         done < regions_prime.txt
         echo "exit" >> ${IGV_SCRIPT}
         cat ${IGV_SCRIPT}
-        python ./IGV-snapshot-automator/make_IGV_snapshots.py -mem $(( ~{ram_size_gb}-4 )) -onlysnap ${IGV_SCRIPT}
+        python /IGV-snapshot-automator/make_IGV_snapshots.py -mem $(( ~{ram_size_gb}-4 )) -onlysnap ${IGV_SCRIPT}
         tar -czvf report.tar.gz ${FIGURES_DIR}
         
         #${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone

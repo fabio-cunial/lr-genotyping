@@ -30,6 +30,7 @@ RUN apt-get -qqy update --fix-missing \
         git \
         bc \
         xvfb \
+        unzip \
         python3-pip
 
 # GSUTIL
@@ -112,8 +113,8 @@ RUN conda update conda \
 # IGV-REPORTS
 RUN pip install igv-reports
 
-# IGV-SNAPHOT-AUTOMATOR
-RUN wget https://github.com/stevekm/IGV-snapshot-automator.git \
+# IGV-SNAPSHOT-AUTOMATOR
+RUN git clone https://github.com/stevekm/IGV-snapshot-automator.git \
     && cd IGV-snapshot-automator \
     && make install
 
