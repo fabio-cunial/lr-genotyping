@@ -88,7 +88,7 @@ task Sv2IgvImpl {
         TEST=$(gsutil -q stat ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam && echo 0 || echo 1)
         if [ ${TEST} -eq 0 ]; then
             while : ; do
-                TEST2=$(gsutil -m cp '~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam' ./all.bam && echo 0 || echo 1)
+                TEST2=$(gsutil -m cp ~{bucket_dir}/${BAM_NAME}_${BED_NAME}.bam ./all.bam && echo 0 || echo 1)
                 if [ ${TEST2} -eq 1 ]; then
                     echo "Error downloading BAM files at <~{bucket_dir}/${BAM_NAME}_${BED_NAME}/>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
