@@ -29,7 +29,6 @@ workflow Sv2Igv {
             bam_size_gb = bam_size_gb
     }
     output {
-        File report = Sv2IgvImpl.report
     }
 }
 
@@ -56,16 +55,14 @@ task Sv2IgvImpl {
     command <<<
         set -euxo pipefail
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-        Xvfb :1 &
-        export DISPLAY=":1"
-        CHR21_LENGTH="46709983"
-        CHR22_LENGTH="50818468"
         
         GSUTIL_DELAY_S="600"
         TIME_COMMAND="/usr/bin/time --verbose"
         N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( 2 * ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))  # 2: Hoping that hyperthreading can speed parallel downloads up...
+        CHR21_LENGTH="46709983"
+        CHR22_LENGTH="50818468"
         
         function downloadThread() {
             local CHUNK_FILE=$1
@@ -135,10 +132,18 @@ task Sv2IgvImpl {
             -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
             -show_soft_clipped
         tar -czvf report.tar.gz ${REPORT_DIR}
+        while : ; do
+            TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp report.tar.gz ~{bucket_dir}/${BAM_NAME}_${BED_NAME}/ && echo 0 || echo 1)
+            if [ ${TEST} -eq 1 ]; then
+                echo "Error uploading file <~{bucket_dir}/${BAM_NAME}_${BED_NAME}/report.tar.gz>. Trying again..."
+                sleep ${GSUTIL_DELAY_S}
+            else
+                break
+            fi
+        done
     >>>
 
     output {
-        File report = "report.tar.gz"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
