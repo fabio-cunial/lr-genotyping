@@ -145,12 +145,26 @@ task Sv2IgvImpl {
         done < regions_prime.txt
         echo "exit" >> ${IGV_SCRIPT}
         cat ${IGV_SCRIPT}
-        python /IGV-snapshot-automator/make_IGV_snapshots.py -mem $(( ~{ram_size_gb}-4 )) -onlysnap ${IGV_SCRIPT} all.bam
-        tar -czvf report_merged_1.tar.gz ${FIGURES_DIR_MERGED}
+        #${TIME_COMMAND} python /IGV-snapshot-automator/make_IGV_snapshots.py -mem $(( ~{ram_size_gb}-4 )) -onlysnap ${IGV_SCRIPT} all.bam
+        #tar -czvf report_merged_1.tar.gz ${FIGURES_DIR_MERGED}
+        
+        
+        
+        
+        
+        # Trying another way as well
+        FIGURES_DIR_MERGED="figures_merged_2"
+        ${TIME_COMMAND} bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam all.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_MERGED} \
+            -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
+            -show_soft_clipped \
+        tar -czvf report_merged_2.tar.gz ${FIGURES_DIR_MERGED}
+        
+        
+        
         
         # Printing reads from different individuals separately in an HTML report
 #        FIGURES_DIR_DISTINCT="figures_distinct"
-#        bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam alignments_*.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_DISTINCT} \
+#        ${TIME_COMMAND} bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam alignments_*.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_DISTINCT} \
 #            -separated_bam \
 #            -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
 #            -show_soft_clipped \
@@ -158,7 +172,7 @@ task Sv2IgvImpl {
         
         # Printing reads from different individuals (one image per SV).
 #        FIGURES_DIR_MERGED="figures_merged_2"
-#        bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam alignments_*.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_MERGED} \
+#        ${TIME_COMMAND} bamsnap -process ${N_THREADS} -ref ~{reference_fa} -bam alignments_*.bam -bed ${BAMSNAP_BED} -out ${FIGURES_DIR_MERGED} \
 #            -bamplot read -read_thickness 2 -read_gap_height 0 -read_gap_width 1 \
 #            -show_soft_clipped \
 #        tar -czvf report_merged_2.tar.gz ${FIGURES_DIR_MERGED}
@@ -168,8 +182,11 @@ task Sv2IgvImpl {
         
         
         
-        touch report_distinct.tar.gz report_merged_2.tar.gz
+        touch report_merged_1.tar.gz report_distinct.tar.gz report_merged_2.tar.gz
         
+        
+        
+        # OLD IGV-REPORT CODE. THE OUTPUT HTML+JS IS TOO BIG FOR ANY BROWSER.
         #${TIME_COMMAND} create_report ~{regions_bed} ~{reference_fa} --flanking 10000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
