@@ -5,28 +5,21 @@ version 1.0
 #
 workflow Sv2Igv {
     input {
+        File vcf_file
         File bam_addresses
-        File regions_bed
-        File reference_fa
-        File reference_fai
-        String bucket_dir
+        String output_bucket_dir
         Int n_cpus
-        Int bam_size_gb
     }
     parameter_meta {
         bam_addresses: "File containing a list of bucket addresses."
-        bam_size_gb: "Upper bound on the size of a single BAM."
     }
     
     call Sv2IgvImpl {
         input:
+            vcf_file = vcf_file,
             bam_addresses = bam_addresses,
-            regions_bed = regions_bed,
-            reference_fa = reference_fa,
-            reference_fai = reference_fai,
-            bucket_dir = bucket_dir,
-            n_cpus = n_cpus,
-            bam_size_gb = bam_size_gb
+            output_bucket_dir = output_bucket_dir,
+            n_cpus = n_cpus
     }
     output {
     }
@@ -37,16 +30,12 @@ workflow Sv2Igv {
 #
 task Sv2IgvImpl {
     input {
+        File vcf_file
         File bam_addresses
-        File regions_bed
-        File reference_fa
-        File reference_fai
-        String bucket_dir
+        String output_bucket_dir
         Int n_cpus
-        Int bam_size_gb
     }
     parameter_meta {
-        bam_size_gb: "Upper bound on the size of a single BAM."
     }
     
     Int ram_size_gb = n_cpus*4  # Arbitrary
@@ -55,9 +44,7 @@ task Sv2IgvImpl {
     command <<<
         set -euxo pipefail
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-        Xvfb :1 &
-        export DISPLAY=":1"
-        IMAGE_HEIGHT="20"; HORIZONTAL_SLACK="10000"
+        HORIZONTAL_SLACK="2000"
         CHR21_LENGTH="46709983"
         CHR22_LENGTH="50818468"
         
@@ -69,60 +56,48 @@ task Sv2IgvImpl {
         
         function downloadThread() {
             local CHUNK_FILE=$1
+            local CHR=$2
+            local START=$3
+            local END=$4
             
             while read REMOTE_BAM; do
                 SAMPLE_ID=$(basename -s .bam ${REMOTE_BAM})
-                TEST=$(samtools view --threads 1 --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output ${SAMPLE_ID}.bam ${REMOTE_BAM} && echo 0 || echo 1)
+                TEST=$(samtools view --threads 1 ${REMOTE_BAM} ${CHR}:${START}-${END} > ${SAMPLE_ID}.sam && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
                     export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-                    ${TIME_COMMAND} samtools view --threads ${N_THREADS} --target-file ~{regions_bed} --reference ~{reference_fa} --fai-reference ~{reference_fai} --bam --output ${SAMPLE_ID}.bam ${REMOTE_BAM}
+                    ${TIME_COMMAND} samtools view --threads 1 ${REMOTE_BAM} ${CHR}:${START}-${END} > ${SAMPLE_ID}.sam
                 fi
-                samtools index ${SAMPLE_ID}.bam
-                IGV_SCRIPT="${SAMPLE_ID}.txt";
-                echo "new" > ${IGV_SCRIPT}
-                echo "snapshotDirectory ." >> ${IGV_SCRIPT}
-                echo "load ${SAMPLE_ID}.bam" >> ${IGV_SCRIPT}
-                echo "genome ~{reference_fa}" >> ${IGV_SCRIPT}
-                echo "maxPanelHeight ${IMAGE_HEIGHT}" >> ${IGV_SCRIPT}
-                tr '\t' ',' < ~{regions_bed} > regions_prime.txt
-                while read SV; do
-                    CHR=$(echo ${SV} | cut -d , -f 1)
-                    START=$(echo ${SV} | cut -d , -f 2)
-                    START=$(( ${START}-${HORIZONTAL_SLACK} ))
-                    if [ ${START} -lt 1 ]; then
-                        START="1"
-                    fi
-                    END=$(echo ${SV} | cut -d , -f 3)
-                    END=$(( ${END}+${HORIZONTAL_SLACK} ))
-                    if [ ${END} -le ${START} ]; then
-                        END=$(( ${START}+1 ))
-                    fi
-                    if [ ${CHR} = "chr21" -a ${END} -gt ${CHR21_LENGTH} ]; then
-                        END=$(( ${CHR21_LENGTH} ))
-                    elif [ ${CHR} = "chr22" -a ${END} -gt ${CHR22_LENGTH} ]; then
-                        END=$(( ${CHR22_LENGTH} ))
-                    fi
-                    echo "goto ${CHR}:${START}-${END}" >> ${IGV_SCRIPT}
-                    echo "sort base" >> ${IGV_SCRIPT}
-                    echo "squish" >> ${IGV_SCRIPT}
-                    echo "snapshot ${CHR}_${START}_${END}_${SAMPLE_ID}.png" >> ${IGV_SCRIPT}
-                done < regions_prime.txt
-                echo "exit" >> ${IGV_SCRIPT}
-                ${TIME_COMMAND} python /IGV-snapshot-automator/make_IGV_snapshots.py -mem 2000 -onlysnap ${IGV_SCRIPT} ${SAMPLE_ID}.bam
             done < ${CHUNK_FILE}
         }
         
+        tr '\t' ',' < ~{vcf_file} > sv.txt
+        CHR=$(cut -d , -f 1 sv.txt)
+        START=$(cut -d , -f 2 sv.txt)
+        START=$(( ${START}-${HORIZONTAL_SLACK} ))
+        if [ ${START} -lt 1 ]; then
+            START="1"
+        fi
+        END=$(cut -d , -f 3 sv.txt)
+        END=$(( ${END}+${HORIZONTAL_SLACK} ))
+        if [ ${END} -le ${START} ]; then
+            END=$(( ${START}+1 ))
+        fi
+        if [ ${CHR} = "chr21" -a ${END} -gt ${CHR21_LENGTH} ]; then
+            END=$(( ${CHR21_LENGTH} ))
+        elif [ ${CHR} = "chr22" -a ${END} -gt ${CHR22_LENGTH} ]; then
+            END=$(( ${CHR22_LENGTH} ))
+        fi
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
-        BED_NAME=$(basename -s .bed ~{regions_bed})
         N_ROWS=$(wc -l < ~{bam_addresses})
         N_ROWS_PER_CHUNK=$(( ${N_ROWS}/${N_THREADS} ))
         split -l ${N_ROWS_PER_CHUNK} ~{bam_addresses} chunk_
         for CHUNK in chunk_*; do
-            downloadThread ${CHUNK} &
+            downloadThread ${CHUNK} ${CHR} ${START} ${END} &
         done
         wait
+        ${TIME_COMMAND} java -Xmx$((~{ram_size_gb}-4))g /Pigv ~{vcf_file} . ${HORIZONTAL_SLACK} ${CHR22_LENGTH} image.png
         while : ; do
-            TEST=$(gsutil -m cp './*.png' ~{bucket_dir}/${BAM_NAME}_${BED_NAME}/ && echo 0 || echo 1)
+            TEST=$(gsutil -m cp './*.png' ~{output_bucket_dir} && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
                 echo "Error uploading PNG files. Trying again..."
                 sleep ${GSUTIL_DELAY_S}

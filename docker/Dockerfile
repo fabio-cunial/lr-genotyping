@@ -36,6 +36,7 @@ RUN apt-get -qqy update --fix-missing \
         xauth \
         unzip \
         python3-pip \
+        default-jdk \
         default-jre
 
 # GSUTIL
@@ -130,3 +131,5 @@ RUN pip install bamsnap \
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
 COPY make_IGV_snapshots.py /IGV-snapshot-automator
+COPY *.java .
+RUN javac *.java
