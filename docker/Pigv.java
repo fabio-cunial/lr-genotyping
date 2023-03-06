@@ -35,7 +35,7 @@ public class Pigv {
      * Samples divisor
      */
     private static final int DIVISOR_HEIGHT_PIXELS = 1;
-    private static final int COLOR_DIVISOR = 0x00DFE1E2;
+    private static final int COLOR_DIVISOR = COLOR_BACKGROUND;  //0x00DFE1E2;
     
     /**
      * Default sizes of array $cigars$.
@@ -84,16 +84,17 @@ public class Pigv {
         nSamples=tokens_header.length-9;
         samples = new Sample[nSamples];
         tokens_sv=sv.split("\t");
-        frameStart=Integer.parseInt(tokens_sv[1])-1-HORIZONTAL_SLACK;
-        if (frameStart<0) frameStart=0;
         chromosome=tokens_sv[0];
         svStart=Integer.parseInt(tokens_sv[1])-1;
+        frameStart=svStart-1-HORIZONTAL_SLACK;
+        if (frameStart<0) frameStart=0;
         pass=tokens_sv[6];
         svType=getField(tokens_sv[7],SVTYPE_STR);
         frameEnd=-1; svLength=-1;
         str=getField(tokens_sv[7],SVLEN_STR);
         if (str!=null) {
             svLength=Integer.parseInt(str);
+            if (svLength<0) svLength=-svLength;
             frameEnd=svStart+svLength+HORIZONTAL_SLACK;
         }
         if (frameEnd==-1) {

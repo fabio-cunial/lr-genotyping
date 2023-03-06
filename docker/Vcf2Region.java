@@ -31,6 +31,7 @@ public class Vcf2Region {
         str=getField(tokens[7],SVLEN_STR);
         if (str!=null) {
             svLength=Integer.parseInt(str);
+            if (svLength<0) svLength=-svLength;
             frameEnd=svStart+svLength+HORIZONTAL_SLACK;
         }
         if (frameEnd==-1) {
