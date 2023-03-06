@@ -75,7 +75,7 @@ task Sv2IgvImpl {
         elif [ ${CHR} = "chr22" ]; then
             CHR_LENGTH=${CHR22_LENGTH}
         fi
-        REGION=$(java /Vcf2Region ~{vcf_file} ${HORIZONTAL_SLACK} ${CHR_LENGTH})
+        REGION=$(java -cp / Vcf2Region ~{vcf_file} ${HORIZONTAL_SLACK} ${CHR_LENGTH})
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
         N_ROWS=$(wc -l < ~{bam_addresses})
         N_ROWS_PER_CHUNK=$(( ${N_ROWS}/${N_THREADS} ))
@@ -84,7 +84,7 @@ task Sv2IgvImpl {
             downloadThread ${CHUNK} ${REGION} &
         done
         wait
-        ${TIME_COMMAND} java -Xmx$((~{ram_size_gb}-4))g /Pigv ~{vcf_file} . ${HORIZONTAL_SLACK} ${CHR_LENGTH} image.png
+        ${TIME_COMMAND} java -cp / -Xmx$((~{ram_size_gb}-4))g Pigv ~{vcf_file} . ${HORIZONTAL_SLACK} ${CHR_LENGTH} image.png
         while : ; do
             TEST=$(gsutil -m cp './*.png' ~{output_bucket_dir} && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
