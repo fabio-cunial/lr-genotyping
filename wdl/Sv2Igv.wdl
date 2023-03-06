@@ -44,7 +44,7 @@ task Sv2IgvImpl {
     command <<<
         set -euxo pipefail
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-        HORIZONTAL_SLACK="2000"
+        HORIZONTAL_SLACK="5000"
         CHR21_LENGTH="46709983"
         CHR22_LENGTH="50818468"
         
