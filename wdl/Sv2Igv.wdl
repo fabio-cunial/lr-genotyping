@@ -68,7 +68,7 @@ task Sv2IgvImpl {
             done < ${CHUNK_FILE}
         }
         
-        tr '\t' ',' < ~{vcf_file} > sv.txt
+        tail -n 1 ~{vcf_file} | tr '\t' ',' > sv.txt
         CHR=$(cut -d , -f 1 sv.txt)
         if [ ${CHR} = "chr21" ]; then
             CHR_LENGTH=${CHR21_LENGTH}
