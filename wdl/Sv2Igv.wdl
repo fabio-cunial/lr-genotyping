@@ -91,7 +91,7 @@ task Sv2IgvImpl {
         # Samplot
         CHR=${REGION%:*}
         REGION=${REGION#*:}; START=${REGION%-*}; END=${REGION#*-}
-        ${TIME_COMMAND} samplot plot --bams *.bam --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} )) 
+        samplot plot --bams *.bam --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} )) 
         
         while : ; do
             TEST=$(gsutil -m cp './*.png' ~{output_bucket_dir} && echo 0 || echo 1)
