@@ -65,7 +65,7 @@ task Sv2IgvImpl {
                     export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
                     ${TIME_COMMAND} samtools view --threads 1 ${REMOTE_BAM} ${REGION} > ${SAMPLE_ID}.sam
                 fi
-                samtools view --bam ${SAMPLE_ID}.sam > ${SAMPLE_ID}.bam
+                samtools view -h --bam ${SAMPLE_ID}.sam > ${SAMPLE_ID}.bam
                 samtools index ${SAMPLE_ID}.bam
             done < ${CHUNK_FILE}
         }
