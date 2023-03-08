@@ -89,8 +89,8 @@ task Sv2IgvImpl {
         ${TIME_COMMAND} java -cp / -Xmx$((~{ram_size_gb}-4))g Pigv ~{vcf_file} . ${HORIZONTAL_SLACK} ${CHR_LENGTH} image.png
         
         # Samplot
-        CHR=${REGION%":*"}; 
-        REGION=${REGION#"*:"}; START=${REGION%"-*"}; END=${REGION#"*-"}
+        CHR=${REGION%:*}
+        REGION=${REGION#*:}; START=${REGION%-*}; END=${REGION#*-}
         ${TIME_COMMAND} samplot plot --bams *.bam --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} )) 
         
         while : ; do
