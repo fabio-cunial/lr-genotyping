@@ -128,6 +128,9 @@ RUN git clone https://github.com/stevekm/IGV-snapshot-automator.git \
 RUN pip install bamsnap \
     && bamsnap -h
 
+# SAMPLOT
+RUN conda install -c bioconda samplot  
+
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
 COPY make_IGV_snapshots.py /IGV-snapshot-automator

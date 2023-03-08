@@ -64,6 +64,8 @@ task Sv2IgvImpl {
                 if [ ${TEST} -eq 1 ]; then
                     export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
                     ${TIME_COMMAND} samtools view --threads 1 ${REMOTE_BAM} ${REGION} > ${SAMPLE_ID}.sam
+                    samtools view --bam ${SAMPLE_ID}.sam > ${SAMPLE_ID}.bam
+                    samtools index ${SAMPLE_ID}.bam
                 fi
             done < ${CHUNK_FILE}
         }
@@ -85,6 +87,12 @@ task Sv2IgvImpl {
         done
         wait
         ${TIME_COMMAND} java -cp / -Xmx$((~{ram_size_gb}-4))g Pigv ~{vcf_file} . ${HORIZONTAL_SLACK} ${CHR_LENGTH} image.png
+        
+        # Samplot
+        CHR=${REGION%":*"}; 
+        REGION=${REGION#"*:"}; START=${REGION%"-*"}; END=${REGION#"*-"}
+        ${TIME_COMMAND} samplot plot --bams *.bam --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} )) 
+        
         while : ; do
             TEST=$(gsutil -m cp './*.png' ~{output_bucket_dir} && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
