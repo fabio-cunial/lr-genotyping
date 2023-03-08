@@ -64,9 +64,9 @@ task Sv2IgvImpl {
                 if [ ${TEST} -eq 1 ]; then
                     export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
                     ${TIME_COMMAND} samtools view --threads 1 ${REMOTE_BAM} ${REGION} > ${SAMPLE_ID}.sam
-                    samtools view --bam ${SAMPLE_ID}.sam > ${SAMPLE_ID}.bam
-                    samtools index ${SAMPLE_ID}.bam
                 fi
+                samtools view --bam ${SAMPLE_ID}.sam > ${SAMPLE_ID}.bam
+                samtools index ${SAMPLE_ID}.bam
             done < ${CHUNK_FILE}
         }
         
@@ -91,12 +91,7 @@ task Sv2IgvImpl {
         # Samplot
         CHR=${REGION%:*}
         REGION=${REGION#*:}; START=${REGION%-*}; END=${REGION#*-}
-        BAMS_LIST=""
-        ls -lah *.bam
-        for BAM_FILE in *.bam; do
-            BAMS_LIST="${BAMS_LIST} ${BAM_FILE}"
-        done
-        ${TIME_COMMAND} samplot plot --bams ${BAMS_LIST} --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} ))
+        ${TIME_COMMAND} samplot plot --bams *.bam --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} ))
         
         while : ; do
             TEST=$(gsutil -m cp './*.png' ~{output_bucket_dir} && echo 0 || echo 1)
