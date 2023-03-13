@@ -11,6 +11,9 @@ workflow Sv2Igv {
         Int n_cpus
         File reference_fa
         File reference_fai
+        String chr
+        Int start
+        Int end
     }
     parameter_meta {
         bam_addresses: "File containing a list of bucket addresses."
@@ -23,7 +26,10 @@ workflow Sv2Igv {
             output_bucket_dir = output_bucket_dir,
             n_cpus = n_cpus,
             reference_fa = reference_fa,
-            reference_fai = reference_fai
+            reference_fai = reference_fai,
+            chr = chr,
+            start = start,
+            end = end
     }
     output {
         File report = Sv2IgvImpl.report
@@ -41,6 +47,9 @@ task Sv2IgvImpl {
         Int n_cpus
         File reference_fa
         File reference_fai
+        String chr
+        Int start
+        Int end
     }
     parameter_meta {
     }
@@ -75,8 +84,8 @@ task Sv2IgvImpl {
             done < ${CHUNK_FILE}
         }
         
-        REGION="chr22:50674415-50733298"
-        echo -e "chr22\t50674415\t50733298" > region.bed
+        REGION="~{chr}:~{start}-~{end}"
+        echo -e "~{chr}\t~{start}\t~{end}" > region.bed
         
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
         N_ROWS=$(wc -l < ~{bam_addresses})
