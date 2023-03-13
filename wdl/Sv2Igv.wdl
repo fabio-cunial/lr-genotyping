@@ -22,6 +22,7 @@ workflow Sv2Igv {
             n_cpus = n_cpus
     }
     output {
+        File report = Sv2IgvImpl.report
     }
 }
 
@@ -44,7 +45,6 @@ task Sv2IgvImpl {
     command <<<
         set -euxo pipefail
         export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-        HORIZONTAL_SLACK="5000"
         CHR21_LENGTH="46709983"
         CHR22_LENGTH="50818468"
         
@@ -60,11 +60,6 @@ task Sv2IgvImpl {
             
             while read REMOTE_BAM; do
                 SAMPLE_ID=$(basename -s .bam ${REMOTE_BAM})
-                TEST=$(samtools view --threads 1 ${REMOTE_BAM} ${REGION} > ${SAMPLE_ID}.sam && echo 0 || echo 1)
-                if [ ${TEST} -eq 1 ]; then
-                    export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
-                    ${TIME_COMMAND} samtools view --threads 1 ${REMOTE_BAM} ${REGION} > ${SAMPLE_ID}.sam
-                fi
                 TEST=$(samtools view --threads 1 -h --bam ${REMOTE_BAM} ${REGION} > ${SAMPLE_ID}.bam && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
                     export GCS_OAUTH_TOKEN=$(gcloud auth application-default print-access-token)
@@ -74,14 +69,9 @@ task Sv2IgvImpl {
             done < ${CHUNK_FILE}
         }
         
-        tail -n 1 ~{vcf_file} | tr '\t' ',' > sv.txt
-        CHR=$(cut -d , -f 1 sv.txt)
-        if [ ${CHR} = "chr21" ]; then
-            CHR_LENGTH=${CHR21_LENGTH}
-        elif [ ${CHR} = "chr22" ]; then
-            CHR_LENGTH=${CHR22_LENGTH}
-        fi
-        REGION=$(java -cp / Vcf2Region ~{vcf_file} ${HORIZONTAL_SLACK} ${CHR_LENGTH})
+        REGION="chr22:50674415-50733298"
+        echo -e "chr22\t50674415\t50733298" > region.bed
+        
         BAM_NAME=$(basename -s .bam ~{bam_addresses})
         N_ROWS=$(wc -l < ~{bam_addresses})
         N_ROWS_PER_CHUNK=$(( ${N_ROWS}/${N_THREADS} ))
@@ -90,25 +80,14 @@ task Sv2IgvImpl {
             downloadThread ${CHUNK} ${REGION} &
         done
         wait
-        ${TIME_COMMAND} java -cp / -Xmx$((~{ram_size_gb}-4))g Pigv ~{vcf_file} . ${HORIZONTAL_SLACK} ${CHR_LENGTH} image.png
+        ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam *.bam
         
-        # Samplot
-        CHR=${REGION%:*}
-        REGION=${REGION#*:}; START=${REGION%-*}; END=${REGION#*-}
-        ${TIME_COMMAND} samplot plot --bams *.bam --max_depth 10000 --output_file samplot.png --chrom ${CHR} --start $(( ${START}-${HORIZONTAL_SLACK} )) --end $(( ${END}+${HORIZONTAL_SLACK} ))
-        
-        while : ; do
-            TEST=$(gsutil -m cp './*.png' ~{output_bucket_dir} && echo 0 || echo 1)
-            if [ ${TEST} -eq 1 ]; then
-                echo "Error uploading PNG files. Trying again..."
-                sleep ${GSUTIL_DELAY_S}
-            else
-                break
-            fi
-        done
+        # IGV-REPORT
+        ${TIME_COMMAND} create_report region.bed ~{reference_fa} --flanking 1000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
     >>>
 
     output {
+        File report = "report.html"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
