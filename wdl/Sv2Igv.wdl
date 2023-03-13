@@ -9,6 +9,7 @@ workflow Sv2Igv {
         File bam_addresses
         String output_bucket_dir
         Int n_cpus
+        File reference_fa
     }
     parameter_meta {
         bam_addresses: "File containing a list of bucket addresses."
@@ -19,7 +20,8 @@ workflow Sv2Igv {
             vcf_file = vcf_file,
             bam_addresses = bam_addresses,
             output_bucket_dir = output_bucket_dir,
-            n_cpus = n_cpus
+            n_cpus = n_cpus,
+            reference_fa = reference_fa
     }
     output {
         File report = Sv2IgvImpl.report
@@ -35,6 +37,7 @@ task Sv2IgvImpl {
         File bam_addresses
         String output_bucket_dir
         Int n_cpus
+        File reference_fa
     }
     parameter_meta {
     }
