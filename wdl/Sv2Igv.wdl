@@ -87,6 +87,7 @@ task Sv2IgvImpl {
         done
         wait
         ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -o all.bam *.bam
+        ${TIME_COMMAND} samtools index -@ ${N_THREADS} all.bam
         
         # IGV-REPORT
         ${TIME_COMMAND} create_report region.bed ~{reference_fa} --flanking 1000 --exclude-flags 0 --sort BASE --tracks all.bam --output report.html --sequence 1 --begin 2 --end 3 --standalone
