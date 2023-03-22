@@ -131,8 +131,13 @@ RUN pip install bamsnap \
 # SAMPLOT
 RUN conda install -c bioconda samplot  
 
+# SVJEDI-GRAPH
+RUN conda install -c bioconda svjedi-graph \
+    && svjedi-graph.py -h
+
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
 COPY make_IGV_snapshots.py /IGV-snapshot-automator
+COPY svjedi-graph.py /opt/conda/bin/
 COPY *.java .
 RUN javac *.java

@@ -11,6 +11,8 @@ workflow Regenotype {
         Int lrcaller_genotyping_model
         Int use_cutesv
         Int use_sniffles2
+        Int use_svjedigraph
+        String svjedigraph_bucket_dir
         File reference_fa
         File reference_fai
         Int n_nodes
@@ -19,7 +21,7 @@ workflow Regenotype {
     }
     parameter_meta {
         merged_vcf_gz: "The output of the merging step, whose genotypes must be refined."
-        bam_addresses: "File containing a list of bucket addresses."
+        bam_addresses: "File containing a list of bucket addresses (BAM or FASTQ files, depending on the needs of the genotyper)."
         lrcaller_genotyping_model: "Genotyping model: 1=AD, 2=VA, 3=JOINT, 4=PRESENCE, 5=VA_OLD. See https://github.com/DecodeGenetics/LRcaller/blob/144204b0edf95c55f31fdf0fbd4f02f4a36edfc1/algo.hpp#L1179"
         n_nodes: "Use this number of nodes to regenotype in parallel."
         n_cpus: "Lower bound on the number of CPUs per regenotype node."
@@ -30,6 +32,14 @@ workflow Regenotype {
         input:
             merged_vcf_gz = merged_vcf_gz,
             reference_fa = reference_fa
+    }
+    if (use_svjedigraph == 1) {
+        call BuildSvJediGraph {
+            input: 
+                merged_vcf_gz = merged_vcf_gz,
+                reference_fa = reference_fa,
+                svjedigraph_bucket_dir = svjedigraph_bucket_dir
+        }
     }
     call GetChunks {
         input:
@@ -45,6 +55,8 @@ workflow Regenotype {
                 lrcaller_genotyping_model = lrcaller_genotyping_model,
                 use_cutesv = use_cutesv,
                 use_sniffles2 = use_sniffles2,
+                use_svjedigraph = use_svjedigraph,
+                svjedigraph_bucket_dir = svjedigraph_bucket_dir,
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
                 n_cpus = n_cpus,
@@ -106,6 +118,59 @@ task GetVcfToGenotype {
 }
 
 
+task BuildSvJediGraph {
+    input {
+        File merged_vcf_gz
+        File reference_fa
+        String svjedigraph_bucket_dir
+    }
+    parameter_meta {
+        svjedigraph_bucket_dir: "The graph is stored in this directory with a fixed name <svjedigraph.gfa.gz>."
+    }
+    
+    Int disk_size_gb = 10*ceil(size(merged_vcf_gz, "GB")) + ceil(size(reference_fa, "GB"))
+    Int ram_size_gb = 2*ceil(size(reference_fa, "GB"))
+
+    command <<<
+        set -euxo pipefail
+        
+        SVJEDI_PATH="opt/conda/bin"
+        GSUTIL_DELAY_S="600"
+        GSUTIL_UPLOAD_THRESHOLD="-o GSUtil:parallel_composite_upload_threshold=150M"
+        TIME_COMMAND="/usr/bin/time --verbose"
+        GRAPH_FILE="svjedigraph"
+        
+        TEST=$(gsutil -q stat ~{svjedigraph_bucket_dir}/${GRAPH_FILE}.gfa.gz && echo 0 || echo 1)
+        if [ ${TEST} -eq 0 ]; then
+            exit 0
+        fi
+        VCF_FILE=~{merged_vcf_gz}
+        VCF_FILE=${VCF_FILE%*.gz}
+        gunzip ~{merged_vcf_gz}
+        ${TIME_COMMAND} python ${SVJEDI_PATH}/construct-graph.py --vcf ${VCF_FILE} --ref ~{reference_fa} -o ${GRAPH_FILE}.gfa
+        ${TIME_COMMAND} gzip --fast ${GRAPH_FILE}.gfa
+        while : ; do
+            TEST=$(gsutil ${GSUTIL_UPLOAD_THRESHOLD} cp ${GRAPH_FILE}.gfa.gz ~{svjedigraph_bucket_dir}/ && echo 0 || echo 1)
+            if [ ${TEST} -eq 1 ]; then
+                echo "Error uploading file <${GRAPH_FILE}.gfa.gz>. Trying again..."
+                sleep ${GSUTIL_DELAY_S}
+            else
+                break
+            fi
+        done
+    >>>
+    
+    output {
+    }
+    runtime {
+        docker: "fcunial/lr-genotyping"
+        memory: ram_size_gb + " GB"
+        disks: "local-disk " + disk_size_gb + " HDD"
+        preemptible: 0
+    }
+}
+
+
 # Creates an array of balanced lists of BAM addresses.
 #
 task GetChunks {
@@ -156,12 +221,15 @@ task RegenotypeChunk {
         Int lrcaller_genotyping_model
         Int use_cutesv
         Int use_sniffles2
+        Int use_svjedigraph
+        String svjedigraph_bucket_dir
         File reference_fa
         File reference_fai
         Int n_cpus
         Int bam_size_gb
     }
     parameter_meta {
+        chunk: "A list of BAM or FASTQ file addresses, depending on the needs of the genotyper."
         bam_size_gb: "Upper bound on the size of a single BAM."
         lrcaller_genotyping_model: "Genotyping model: 1=AD, 2=VA, 3=JOINT, 4=PRESENCE, 5=VA_OLD. See https://github.com/DecodeGenetics/LRcaller/blob/144204b0edf95c55f31fdf0fbd4f02f4a36edfc1/algo.hpp#L1179"
     }
@@ -178,32 +246,67 @@ task RegenotypeChunk {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         CUTESV_MIN_SUPPORTING_READS="2"  # Since we have <=4 reads per haplotype
+        GRAPH_FILE="svjedigraph"
         
-        touch format.txt genotypes.txt
-        i="0"
-        while read BAM_FILE; do
+        if [ ~{use_svjedigraph} -eq 1]; then
             while : ; do
-                TEST=$(gsutil -m cp ${BAM_FILE} ${BAM_FILE}.bai . && echo 0 || echo 1)
+                TEST=$(gsutil cp ~{svjedigraph_bucket_dir}/${GRAPH_FILE}.gfa.gz . && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
-                    echo "Error downloading file <${BAM_FILE}>. Trying again..."
+                    echo "Error downloading file <~{svjedigraph_bucket_dir}/${GRAPH_FILE}.gfa.gz>. Trying again..."
                     sleep ${GSUTIL_DELAY_S}
                 else
                     break
                 fi
             done
+            gunzip ${GRAPH_FILE}.gfa.gz
+        fi
+        touch format.txt genotypes.txt
+        i="0"
+        while read FILE; do
+            SUFFIX=${FILE#*.}
+            if [ ${SUFFIX} = bam ]; then
+                while : ; do
+                    TEST=$(gsutil -m cp ${FILE} ${FILE}.bai . && echo 0 || echo 1)
+                    if [ ${TEST} -eq 1 ]; then
+                        echo "Error downloading file <${FILE}>. Trying again..."
+                        sleep ${GSUTIL_DELAY_S}
+                    else
+                        break
+                    fi
+                done
+            else
+                while : ; do
+                    TEST=$(gsutil -m cp ${FILE} . && echo 0 || echo 1)
+                    if [ ${TEST} -eq 1 ]; then
+                        echo "Error downloading file <${FILE}>. Trying again..."
+                        sleep ${GSUTIL_DELAY_S}
+                    else
+                        break
+                    fi
+                done
+            fi
             if [ ~{use_lrcaller} -eq 1 ]; then
-                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} $(basename ${BAM_FILE}) ~{vcf_to_genotype} genotypes.vcf
+                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} $(basename ${FILE}) ~{vcf_to_genotype} genotypes.vcf
             elif [ ~{use_cutesv} -eq 1 ]; then
                 rm -rf ./cutesv_tmp; mkdir ./cutesv_tmp
-                ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${BAM_FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
+                ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
             elif [ ~{use_sniffles2} -eq 1 ]; then
-                ${TIME_COMMAND} sniffles --threads ${N_THREADS} --genotype-vcf ~{vcf_to_genotype} --input $(basename ${BAM_FILE}) --vcf genotypes.vcf
+                ${TIME_COMMAND} sniffles --threads ${N_THREADS} --genotype-vcf ~{vcf_to_genotype} --input $(basename ${FILE}) --vcf genotypes.vcf
+            elif [ ~{use_svjedigraph} -eq 1 ]; then
+                ${TIME_COMMAND} svjedi-graph.py --threads ${N_THREADS} --vcf ~{vcf_to_genotype} --ref ~{reference_fa} --reads ${FILE} --prefix ${GRAPH_FILE}
+                mv ${GRAPH_FILE}_genotype.vcf genotypes.vcf
+                rm -f *.gaf *.json
             fi
             N_LINES=$(grep '#' genotypes.vcf | wc -l)
-            rm -f $(basename ${BAM_FILE}) $(basename ${BAM_FILE}).bai
+            rm -f $(basename ${FILE}) && echo 0 || echo 1
+            rm -f $(basename ${FILE}).bai && echo 0 || echo 1
             echo "FORMAT" > format.txt
             tail -n +$(( ${N_LINES} + 1 )) genotypes.vcf | cut -f 9 >> format.txt
-            INDIVIDUAL=$(basename -s .bam ${BAM_FILE})
+            if [ ~{use_svjedigraph} -eq 1 ]; then
+                INDIVIDUAL=$(basename -s .fastq.gz ${FILE})
+            else
+                INDIVIDUAL=$(basename -s .bam ${FILE})
+            fi
             echo ${INDIVIDUAL} > new_genotypes.txt
             if [ ~{use_lrcaller} -eq 1 ]; then
                 GENOTYPE_COLUMN=$(( 9 + ~{lrcaller_genotyping_model}))
