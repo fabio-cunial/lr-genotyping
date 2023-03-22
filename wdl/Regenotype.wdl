@@ -134,7 +134,7 @@ task BuildSvJediGraph {
     command <<<
         set -euxo pipefail
         
-        SVJEDI_PATH="opt/conda/bin"
+        SVJEDI_PATH="/opt/conda/bin"
         GSUTIL_DELAY_S="600"
         GSUTIL_UPLOAD_THRESHOLD="-o GSUtil:parallel_composite_upload_threshold=150M"
         TIME_COMMAND="/usr/bin/time --verbose"
