@@ -294,15 +294,16 @@ task RegenotypeChunk {
                     fi
                 done
             fi
+            LOCAL_FILE=$(basename ${FILE})
             if [ ~{use_lrcaller} -eq 1 ]; then
-                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} $(basename ${FILE}) ~{vcf_to_genotype} genotypes.vcf
+                ${TIME_COMMAND} LRcaller --number_of_threads ${N_THREADS} -fa ~{reference_fa} ${LOCAL_FILE} ~{vcf_to_genotype} genotypes.vcf
             elif [ ~{use_cutesv} -eq 1 ]; then
                 rm -rf ./cutesv_tmp; mkdir ./cutesv_tmp
-                ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 $(basename ${FILE}) ~{reference_fa} genotypes.vcf ./cutesv_tmp
+                ${TIME_COMMAND} cuteSV --threads ${N_THREADS} -Ivcf ~{vcf_to_genotype} --max_cluster_bias_INS 1000 --diff_ratio_merging_INS 0.9 --max_cluster_bias_DEL 1000 --diff_ratio_merging_DEL 0.8 -mi 500 -md 500 --min_support ${CUTESV_MIN_SUPPORTING_READS} --genotype -L -1 ${LOCAL_FILE} ~{reference_fa} genotypes.vcf ./cutesv_tmp
             elif [ ~{use_sniffles2} -eq 1 ]; then
-                ${TIME_COMMAND} sniffles --threads ${N_THREADS} --genotype-vcf ~{vcf_to_genotype} --input $(basename ${FILE}) --vcf genotypes.vcf
+                ${TIME_COMMAND} sniffles --threads ${N_THREADS} --genotype-vcf ~{vcf_to_genotype} --input ${LOCAL_FILE} --vcf genotypes.vcf
             elif [ ~{use_svjedigraph} -eq 1 ]; then
-                ${TIME_COMMAND} svjedi-graph.py --threads ${N_THREADS} --vcf ~{vcf_to_genotype} --ref ~{reference_fa} --reads ${FILE} --prefix ${GRAPH_FILE}
+                ${TIME_COMMAND} svjedi-graph.py --threads ${N_THREADS} --vcf ~{vcf_to_genotype} --ref ~{reference_fa} --reads ${LOCAL_FILE} --prefix ${GRAPH_FILE}
                 mv ${GRAPH_FILE}_genotype.vcf genotypes.vcf
                 rm -f *.gaf *.json
             fi
