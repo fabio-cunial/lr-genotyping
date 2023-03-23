@@ -120,6 +120,10 @@ task GetVcfToGenotype {
 }
 
 
+# Remark: the program that transforms a VCF into a GFA distributed with
+# SVJedi-graph is sequential: we could replace it with our own code and at least
+# parallelize by chromosome/chromosome arm.
+#
 task BuildSvJediGraph {
     input {
         File merged_vcf_gz
