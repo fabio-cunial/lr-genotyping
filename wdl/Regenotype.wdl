@@ -171,6 +171,7 @@ task BuildSvJediGraph {
     }
     runtime {
         docker: "fcunial/lr-genotyping"
+        cpu: 1  # <construct-graph.py> is sequential
         memory: ram_size_gb + " GB"
         disks: "local-disk " + disk_size_gb + " HDD"
         preemptible: 0
@@ -256,7 +257,7 @@ task RegenotypeChunk {
         CUTESV_MIN_SUPPORTING_READS="2"  # Since we have <=4 reads per haplotype
         GRAPH_FILE="svjedigraph"
         
-        if [ ~{use_svjedigraph} -eq 1]; then
+        if [ ~{use_svjedigraph} -eq 1 ]; then
             while : ; do
                 TEST=$(gsutil cp ~{svjedigraph_bucket_dir}/${GRAPH_FILE}.gfa.gz . && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
