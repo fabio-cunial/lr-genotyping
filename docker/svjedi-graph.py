@@ -74,7 +74,7 @@ def main(svjg_dir, args):
     #### Create variant graph
     # print("Constructing variation graph...")
     #
-    # outGFA = outPrefix + ".gfa"
+    outGFA = outPrefix + ".gfa"
     # c1 = "python3 {}/construct-graph.py -v {} -r {} -o {}".format(svjg_dir, inVCF, inREF, outGFA)
     # subprocess.run(c1, shell=True)
 

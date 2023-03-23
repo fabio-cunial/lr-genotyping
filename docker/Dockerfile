@@ -138,6 +138,6 @@ RUN conda install -c bioconda svjedi-graph \
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
 COPY make_IGV_snapshots.py /IGV-snapshot-automator
-COPY svjedi-graph.py /opt/conda/bin/
+COPY svjedi-graph.py construct-graph.py /opt/conda/bin/
 COPY *.java .
 RUN javac *.java

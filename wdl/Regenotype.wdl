@@ -41,6 +41,7 @@ workflow Regenotype {
                 svjedigraph_bucket_dir = svjedigraph_bucket_dir
         }
     }
+    Int? message = BuildSvJediGraph.message
     call GetChunks {
         input:
             bam_addresses = bam_addresses,
@@ -60,7 +61,8 @@ workflow Regenotype {
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
                 n_cpus = n_cpus,
-                bam_size_gb = bam_size_gb
+                bam_size_gb = bam_size_gb,
+                message = select_first([message, 0])
         }
     }
     call PasteGenotypedChunks {
@@ -161,6 +163,7 @@ task BuildSvJediGraph {
     >>>
     
     output {
+        Int message = 1
     }
     runtime {
         docker: "fcunial/lr-genotyping"
@@ -227,6 +230,7 @@ task RegenotypeChunk {
         File reference_fai
         Int n_cpus
         Int bam_size_gb
+        Int message
     }
     parameter_meta {
         chunk: "A list of BAM or FASTQ file addresses, depending on the needs of the genotyper."
