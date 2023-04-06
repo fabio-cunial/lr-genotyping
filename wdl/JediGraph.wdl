@@ -64,7 +64,6 @@ task GetVcfToGenotype {
     input {
         String merged_vcf_gz  # Remote address
         String reference_fa  # Remote address
-        File reference_fai
         String region
     }
     
