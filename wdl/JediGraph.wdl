@@ -223,8 +223,6 @@ task PasteGenotypedChunks {
         File vcf_to_genotype
         Array[File] genotypes
         File format
-        Int use_lrcaller
-        Int use_cutesv
     }
     parameter_meta {
         vcf_to_genotype: "The .vcf file that was used as input to $RegenotypeChunk$."
@@ -245,18 +243,18 @@ task PasteGenotypedChunks {
         grep '#' ~{vcf_to_genotype} > header.txt
         N_ROWS=$(wc -l < header.txt)
         head -n $(( ${N_ROWS} - 1 )) header.txt > out_header.txt
-        if [ ~{use_lrcaller} -eq 1 ]; then
-            echo "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allelic depths from alignment supporting ref and alt allele and total number of reads\">" >> out_header.txt
-            echo "##FORMAT=<ID=VA,Number=3,Type=Integer,Description=\"Allelic depths from bam file supporting ref and alt allele and total number of reads\">" >> out_header.txt
-            echo "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED-scaled genotype likelihoods\">" >> out_header.txt
-        elif [ ~{use_cutesv} -eq 1 ]; then
-            echo "##FILTER=<ID=q5,Description=\"Quality below 5\">" >> out_header.txt
-            echo "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">" >> out_header.txt
-            echo "##FORMAT=<ID=DR,Number=1,Type=Integer,Description=\"# High-quality reference reads\">" >> out_header.txt
-            echo "##FORMAT=<ID=DV,Number=1,Type=Integer,Description=\"# High-quality variant reads\">" >> out_header.txt
-            echo "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"# Phred-scaled genotype likelihoods rounded to the closest integer\">" >> out_header.txt
-            echo "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"# Genotype quality\">" >> out_header.txt
-        fi
+        #if [ ~{use_lrcaller} -eq 1 ]; then
+        #    echo "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allelic depths from alignment supporting ref and alt allele and total number of reads\">" >> out_header.txt
+        #     echo "##FORMAT=<ID=VA,Number=3,Type=Integer,Description=\"Allelic depths from bam file supporting ref and alt allele and total number of reads\">" >> out_header.txt
+        #    echo "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED-scaled genotype likelihoods\">" >> out_header.txt
+        #elif [ ~{use_cutesv} -eq 1 ]; then
+        #    echo "##FILTER=<ID=q5,Description=\"Quality below 5\">" >> out_header.txt
+        #    echo "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">" >> out_header.txt
+        #    echo "##FORMAT=<ID=DR,Number=1,Type=Integer,Description=\"# High-quality reference reads\">" >> out_header.txt
+        #    echo "##FORMAT=<ID=DV,Number=1,Type=Integer,Description=\"# High-quality variant reads\">" >> out_header.txt
+        #    echo "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"# Phred-scaled genotype likelihoods rounded to the closest integer\">" >> out_header.txt
+        #    echo "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"# Genotype quality\">" >> out_header.txt
+        #fi
         
         # Building the VCF body (including the column title line).
         tail -n 1 header.txt > out_body.txt
