@@ -95,7 +95,7 @@ task GetVcfToGenotype {
     output {
         File vcf_to_genotype = "variants_only.vcf"
         File new_reference_fa = "new_reference.fa"
-        File new_reference_fai = "new_reference.fai"
+        File new_reference_fai = "new_reference.fa.fai"
         File gfa = "graph.gfa"
     }
     runtime {
