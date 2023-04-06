@@ -83,7 +83,11 @@ task GetVcfToGenotype {
         head -n $(( ${N_ROWS} - 1 )) vcf_header.txt > variants_only.vcf
         echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> variants_only.vcf
         tail -n +$((${N_ROWS} + 1)) filtered.vcf | cut -f 1,2,3,4,5,6,7,8 >> variants_only.vcf
-        samtools faidx ~{reference_fa} ~{region} > new_reference.fa
+        samtools faidx ~{reference_fa} ~{region} > new_reference.txt
+        CHR=~{region}; CHR=${CHR%:*}
+        echo ">${CHR}" >> new_reference.fa
+        tail -n +2 new_reference.txt >> new_reference.fa
+        rm -f new_reference.txt
         samtools faidx new_reference.fa
         ${TIME_COMMAND} python ${SVJEDI_PATH}/construct-graph.py --vcf variants_only.vcf --ref new_reference.fa -o graph.gfa
     >>>
