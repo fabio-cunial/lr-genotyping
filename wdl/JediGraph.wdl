@@ -5,7 +5,7 @@ version 1.0
 #
 workflow JediGraph {
     input {
-        File merged_vcf_gz
+        String merged_vcf_gz
         String region
         File bam_addresses
         File reference_fa
@@ -14,7 +14,7 @@ workflow JediGraph {
         Int n_cpus
     }
     parameter_meta {
-        merged_vcf_gz: "Might cover more than $region$."
+        merged_vcf_gz: "Remote address. Might cover more than $region$."
         bam_addresses: "File containing a list of bucket addresses."
         n_nodes: "Use this number of nodes to regenotype in parallel."
         n_cpus: "Lower bound on the number of CPUs per regenotype node."
@@ -65,7 +65,7 @@ workflow JediGraph {
 #
 task GetVcfToGenotype {
     input {
-        File merged_vcf_gz
+        String merged_vcf_gz  # Remote address
         File reference_fa
         File reference_fai
         String region
