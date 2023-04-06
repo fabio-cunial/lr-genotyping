@@ -8,8 +8,7 @@ workflow JediGraph {
         String merged_vcf_gz
         String region
         File bam_addresses
-        File reference_fa
-        File reference_fai
+        String reference_fa
         Int n_nodes
         Int n_cpus
     }
@@ -24,7 +23,6 @@ workflow JediGraph {
         input:
             merged_vcf_gz = merged_vcf_gz,
             reference_fa = reference_fa,
-            reference_fai = reference_fai,
             region = region
     }
     call GetChunks {
@@ -38,7 +36,6 @@ workflow JediGraph {
                 chunk = chunk_file,
                 vcf_to_genotype = GetVcfToGenotype.vcf_to_genotype,
                 region = region,
-                reference_fa = GetVcfToGenotype.new_reference_fa,
                 graph = GetVcfToGenotype.gfa,
                 n_cpus = n_cpus
         }
@@ -66,12 +63,12 @@ workflow JediGraph {
 task GetVcfToGenotype {
     input {
         String merged_vcf_gz  # Remote address
-        File reference_fa
+        String reference_fa  # Remote address
         File reference_fai
         String region
     }
     
-    Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB")) + 2*ceil(size(reference_fa, "GB"))
+    Int disk_size_gb = 2*ceil(size(merged_vcf_gz, "GB")) + 6
     Int ram_size_gb = disk_size_gb
 
     command <<<
@@ -79,6 +76,7 @@ task GetVcfToGenotype {
         
         SVJEDI_PATH="/opt/conda/bin"
         TIME_COMMAND="/usr/bin/time --verbose"
+        export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
         
         bcftools view --with-header --output-type v --output filtered.vcf --regions-overlap variant --regions ~{region} ~{merged_vcf_gz}
         grep '#' filtered.vcf > vcf_header.txt
@@ -144,7 +142,6 @@ task RegenotypeChunk {
         File chunk
         File vcf_to_genotype
         String region
-        File reference_fa
         File graph
         Int n_cpus
     }
@@ -152,7 +149,7 @@ task RegenotypeChunk {
         chunk: "A list of remote BAM file addresses."
     }
     
-    Int ram_size_gb = 10*ceil( size(vcf_to_genotype,"GB") + size(reference_fa,"GB") + size(graph,"GB") )
+    Int ram_size_gb = 10*ceil( size(vcf_to_genotype,"GB") + 3 + size(graph,"GB") )
     Int disk_size_gb = ram_size_gb
 
     command <<<
