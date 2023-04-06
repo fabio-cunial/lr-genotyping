@@ -15,3 +15,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/Sv2Igv.wdl
   testParameterFiles:
+- name: JediGraph
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/JediGraph.wdl
+  testParameterFiles:
