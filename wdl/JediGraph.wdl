@@ -175,7 +175,7 @@ task RegenotypeChunk {
             fi
             samtools fastq --threads ${N_THREADS} ${INDIVIDUAL}.bam > ${INDIVIDUAL}.fastq
             rm -f ${INDIVIDUAL}.bam
-            ${TIME_COMMAND} svjedi-graph.py --threads ${N_THREADS} --vcf ~{vcf_to_genotype} --ref unused --reads ${INDIVIDUAL}.fastq --prefix graph
+            svjedi-graph.py --threads ${N_THREADS} --vcf ~{vcf_to_genotype} --ref unused --reads ${INDIVIDUAL}.fastq --prefix graph
             rm -f ${INDIVIDUAL}.fastq
             mv graph_genotype.vcf genotypes.vcf
             rm -f *.gaf *.json
