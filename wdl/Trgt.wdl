@@ -39,7 +39,7 @@ workflow Trgt {
                 n_cpus = n_cpus
         }
     }
-    Array[Int] values = [0, 1,]
+    Array[Int] values = [0, 1]
     scatter(split_multiallelics in values) {
         call MergeIndividuals {
             input:
@@ -48,6 +48,16 @@ workflow Trgt {
                 n_cpus = n_cpus,
                 artificial_input = TrgtImpl.artificial_output
         }
+    }
+    call TrgtImpl2 {
+        input:
+            bams_list = bam_addresses,
+            region = region,
+            repeats_bed = repeats_bed,
+            bucket_dir = output_dir,
+            reference_fa = reference_fa,
+            reference_fai = reference_fai,
+            n_cpus = n_cpus
     }
 }
 
@@ -212,6 +222,88 @@ task MergeIndividuals {
             TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp merged${SUFFIX}.vcf.gz'*' ~{bucket_dir}/ && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
                 echo "Error uploading merged VCF. Trying again..."
+                sleep ${GSUTIL_DELAY_S}
+            else
+                break
+            fi
+        done
+    >>>
+
+    output {
+    }
+    runtime {
+        docker: "fcunial/lr-genotyping"
+        cpu: n_cpus
+        memory: ram_size_gb + " GB"
+        disks: "local-disk " + disk_size_gb + " HDD"
+        preemptible: 0
+    }
+}
+
+
+# Builds a single VCF from the union of the BAMs of all individuals.
+#
+task TrgtImpl2 {
+    input {
+        File bams_list
+        String region
+        File repeats_bed
+        String bucket_dir
+        File reference_fa
+        File reference_fai
+        Int n_cpus
+    }
+    parameter_meta {
+        bams_list: "A list of remote BAM file addresses."
+    }
+    
+    Int ram_size_gb = 64
+    Int disk_size_gb = 256
+    String docker_dir = "/"
+    String work_dir = "/cromwell_root/lr-genotyping"
+
+    command <<<
+        set -euxo pipefail
+        mkdir -p ~{work_dir}
+        cd ~{work_dir}
+        
+        GSUTIL_DELAY_S="600"
+        GSUTIL_UPLOAD_THRESHOLD="-o GSUtil:parallel_composite_upload_threshold=150M"
+        TIME_COMMAND="/usr/bin/time --verbose"
+        N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
+        N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
+        N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
+        export RUST_BACKTRACE="full"
+        export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
+        
+        # Downloading all BAMs
+        touch list.txt
+        while read REMOTE_FILE; do
+            INDIVIDUAL=$( basename ${REMOTE_FILE} .bam )
+            TEST=$(samtools view --threads ${N_THREADS} --with-header --bam --output ${INDIVIDUAL}.bam ${REMOTE_FILE} ~{region} && echo 0 || echo 1)
+            if [ ${TEST} -eq 1 ]; then
+                export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
+                samtools view --threads ${N_THREADS} --with-header --bam --output ${INDIVIDUAL}.bam ${REMOTE_FILE} ~{region}
+            fi
+            samtools index -@ ${N_THREADS} ${INDIVIDUAL}.bam
+            echo ${INDIVIDUAL}.bam >> list.txt
+        done < ~{bams_list}
+        ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -b list.txt -o all.bam
+        samtools index -@ ${N_THREADS} all.bam
+        
+        # Genotyping the union of all BAMs
+        ${TIME_COMMAND} ~{docker_dir}trgt --genome ~{reference_fa} --repeats ~{repeats_bed} --reads all.bam --output-prefix tmp
+        bcftools sort --output-type z --output all.vcf.gz tmp.vcf.gz
+        rm -f tmp.vcf.gz
+        bcftools index --threads ${N_THREADS} all.vcf.gz
+        samtools sort -@ ${N_THREADS} -o all.spanning.bam tmp.spanning.bam
+        rm -f tmp.spanning.bam
+        samtools index all.spanning.bam
+        ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf all.vcf.gz --spanning-reads all.spanning.bam --repeat-id id --image all.svg || echo "trvz failed"
+        while : ; do
+            TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp 'all*' ~{bucket_dir}/ && echo 0 || echo 1)
+            if [ ${TEST} -eq 1 ]; then
+                echo "Error uploading file <all*>. Trying again..."
                 sleep ${GSUTIL_DELAY_S}
             else
                 break
