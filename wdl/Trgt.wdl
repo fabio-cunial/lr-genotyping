@@ -133,7 +133,7 @@ task TrgtImpl {
             samtools sort -@ ${N_THREADS} -o ${INDIVIDUAL}.spanning.bam tmp.spanning.bam
             rm -f tmp.spanning.bam
             samtools index ${INDIVIDUAL}.spanning.bam
-            ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf ${INDIVIDUAL}.vcf.gz --spanning-reads ${INDIVIDUAL}.spanning.bam --repeat-id id --image ${INDIVIDUAL}.svg
+            ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf ${INDIVIDUAL}.vcf.gz --spanning-reads ${INDIVIDUAL}.spanning.bam --repeat-id id --image ${INDIVIDUAL}.svg || echo "trvz failed"
             rm -f ${INDIVIDUAL}.spanning.bam ${INDIVIDUAL}.bam
             while : ; do
                 TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp ${INDIVIDUAL}'*' ~{bucket_dir}/ && echo 0 || echo 1)
