@@ -291,6 +291,7 @@ task TrgtImpl2 {
         done < ~{bams_list}
         ${TIME_COMMAND} samtools merge -@ ${N_THREADS} -b list.txt -o all.bam
         samtools index -@ ${N_THREADS} all.bam
+        samtools coverage --region ~{region} -A -w 32 all.bam
         
         # Genotyping the union of all BAMs
         ${TIME_COMMAND} ~{docker_dir}trgt --genome ~{reference_fa} --repeats ~{repeats_bed} --reads all.bam --output-prefix tmp
