@@ -110,6 +110,7 @@ task TrgtImpl {
         N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
+        export RUST_BACKTRACE=1
         export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
         
         while read REMOTE_FILE; do
