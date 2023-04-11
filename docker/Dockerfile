@@ -132,8 +132,21 @@ RUN pip install bamsnap \
 RUN conda install -c bioconda samplot  
 
 # SVJEDI-GRAPH
-RUN conda install -c bioconda svjedi-graph \
+RUN conda install -c bioconda scipy svjedi-graph \
     && svjedi-graph.py -h
+
+# TRGT
+ARG trgt_version=0.4.0
+RUN wget https://github.com/PacificBiosciences/trgt/releases/download/v${trgt_version}/trgt-v${trgt_version}-linux_x86_64.gz \
+    && gunzip trgt-v${trgt_version}-linux_x86_64.gz \
+    && mv trgt-v${trgt_version}-linux_x86_64 trgt \
+    && chmod +x trgt \
+    && ./trgt --help \
+    && wget https://github.com/PacificBiosciences/trgt/releases/download/v${trgt_version}/trvz-v${trgt_version}-linux_x86_64.gz \
+    && gunzip trvz-v${trgt_version}-linux_x86_64.gz \
+    && mv trvz-v${trgt_version}-linux_x86_64 trvz \
+    && chmod +x trvz \
+    && ./trvz --help
 
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .

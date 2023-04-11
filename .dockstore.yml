@@ -20,3 +20,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/JediGraph.wdl
   testParameterFiles:
+- name: Trgt
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/Trgt.wdl
+  testParameterFiles:
