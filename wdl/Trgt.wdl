@@ -217,7 +217,8 @@ task MergeIndividuals {
         ls *${SUFFIX}.vcf.gz > list.txt
         
         # Merging VCFs
-        ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --missing-to-ref --file-list list.txt --output-type z --output merged${SUFFIX}.vcf.gz --write-index
+        ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --missing-to-ref --file-list list.txt --output-type z --output merged${SUFFIX}.vcf.gz
+        ${TIME_COMMAND} bcftools index --threads ${N_THREADS} merged${SUFFIX}.vcf.gz
         while : ; do
             TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp merged${SUFFIX}.vcf.gz'*' ~{bucket_dir}/ && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
