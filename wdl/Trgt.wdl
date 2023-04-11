@@ -125,7 +125,7 @@ task TrgtImpl {
             bcftools sort --output-type z --output ${INDIVIDUAL}.vcf.gz tmp.vcf.gz
             rm -f tmp.vcf.gz
             bcftools index --threads ${N_THREADS} ${INDIVIDUAL}.vcf.gz
-            bcftools --multiallelics -any --multi-overlaps 0 --output-type z --output tmp.vcf.gz ${INDIVIDUAL}.vcf.gz
+            bcftools norm --multiallelics -any --multi-overlaps 0 --output-type z --output tmp.vcf.gz ${INDIVIDUAL}.vcf.gz
             bcftools sort --output-type z --output ${INDIVIDUAL}_split.vcf.gz tmp.vcf.gz
             rm -f tmp.vcf.gz
             bcftools index --threads ${N_THREADS} ${INDIVIDUAL}_split.vcf.gz
