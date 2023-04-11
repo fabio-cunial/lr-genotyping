@@ -110,7 +110,7 @@ task TrgtImpl {
         N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
-        export RUST_BACKTRACE=1
+        export RUST_BACKTRACE="full"
         export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
         
         while read REMOTE_FILE; do
@@ -132,7 +132,7 @@ task TrgtImpl {
             samtools sort -@ ${N_THREADS} -o ${INDIVIDUAL}.spanning.bam tmp.spanning.bam
             rm -f tmp.spanning.bam
             samtools index ${INDIVIDUAL}.spanning.bam
-            ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf ${INDIVIDUAL}.vcf.gz --spanning-reads ${INDIVIDUAL}.spanning.bam --repeat-id ID --image ${INDIVIDUAL}.svg
+            ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf ${INDIVIDUAL}.vcf.gz --spanning-reads ${INDIVIDUAL}.spanning.bam --repeat-id id --image ${INDIVIDUAL}.svg
             rm -f ${INDIVIDUAL}.spanning.bam ${INDIVIDUAL}.bam
             while : ; do
                 TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp ${INDIVIDUAL}'*' ~{bucket_dir}/ && echo 0 || echo 1)

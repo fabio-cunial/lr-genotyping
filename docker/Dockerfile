@@ -75,7 +75,7 @@ RUN wget https://github.com/samtools/samtools/releases/download/${samtools_versi
     && samtools --help
 
 # BCFTOOLS
-ARG bcftools_version=1.16
+ARG bcftools_version=1.17
 RUN wget https://github.com/samtools/bcftools/releases/download/${bcftools_version}/bcftools-${bcftools_version}.tar.bz2 \
     && tar xjf bcftools-${bcftools_version}.tar.bz2 \
     && rm bcftools-${bcftools_version}.tar.bz2 \
