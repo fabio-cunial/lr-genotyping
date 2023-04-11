@@ -134,7 +134,7 @@ task TrgtImpl {
             rm -f tmp.spanning.bam
             samtools index ${INDIVIDUAL}.spanning.bam
             ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf ${INDIVIDUAL}.vcf.gz --spanning-reads ${INDIVIDUAL}.spanning.bam --repeat-id id --image ${INDIVIDUAL}.svg || echo "trvz failed"
-            rm -f ${INDIVIDUAL}.spanning.bam ${INDIVIDUAL}.bam
+            rm -f ${INDIVIDUAL}.spanning.bam* ${INDIVIDUAL}.bam*
             while : ; do
                 TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp ${INDIVIDUAL}'*' ~{bucket_dir}/ && echo 0 || echo 1)
                 if [ ${TEST} -eq 1 ]; then
@@ -182,6 +182,8 @@ task MergeIndividuals {
     command <<<
         set -euxo pipefail
         
+        GSUTIL_DELAY_S="600"
+        GSUTIL_UPLOAD_THRESHOLD="-o GSUtil:parallel_composite_upload_threshold=150M"
         TIME_COMMAND="/usr/bin/time --verbose"
         N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
