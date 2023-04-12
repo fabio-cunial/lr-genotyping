@@ -25,3 +25,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/Trgt.wdl
   testParameterFiles:
+- name: LocalAssembly
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/LocalAssembly.wdl
+  testParameterFiles:

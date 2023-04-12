@@ -8,3 +8,4 @@ java -jar ${WOMTOOL_PATH} validate -l Standardize.wdl -i inputs/private_Standard
 java -jar ${WOMTOOL_PATH} validate -l Sv2Igv.wdl
 java -jar ${WOMTOOL_PATH} validate -l JediGraph.wdl
 java -jar ${WOMTOOL_PATH} validate -l Trgt.wdl
+java -jar ${WOMTOOL_PATH} validate -l LocalAssembly.wdl

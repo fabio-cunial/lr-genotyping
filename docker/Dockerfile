@@ -148,6 +148,18 @@ RUN wget https://github.com/PacificBiosciences/trgt/releases/download/v${trgt_ve
     && chmod +x trvz \
     && ./trvz --help
 
+# HIFIASM
+ARG hifiasm_version=0.19.4
+RUN wget https://github.com/chhylp123/hifiasm/archive/refs/tags/${hifiasm_version}.tar.gz \
+    && tar -xzf ${hifiasm_version}.tar.gz \
+    && rm -f ${hifiasm_version}.tar.gz \
+    && cd hifiasm-${hifiasm_version} \
+    && make \
+    && cp hifiasm /usr/local/bin/ \
+    && cd ${work_dir} \
+    && rm -rf hifiasm-${hifiasm_version} \
+    && hifiasm -h
+
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .
 COPY make_IGV_snapshots.py /IGV-snapshot-automator
