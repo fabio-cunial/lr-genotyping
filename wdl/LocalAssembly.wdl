@@ -6,7 +6,6 @@ version 1.0
 workflow LocalAssembly {
     input {
         String region
-        String output_dir
         File bam_addresses
         Int n_cpus
     }
@@ -17,7 +16,6 @@ workflow LocalAssembly {
         input:
             bams_list = bam_addresses,
             region = region,
-            bucket_dir = output_dir,
             n_cpus = n_cpus
     }
 }
@@ -28,7 +26,6 @@ task LocalAssemblyImpl {
     input {
         File bams_list
         String region
-        String bucket_dir
         Int n_cpus
     }
     parameter_meta {

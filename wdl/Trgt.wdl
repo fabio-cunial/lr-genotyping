@@ -160,7 +160,7 @@ task TrgtImpl {
     >>>
 
     output {
-        Int artificial_output = read_int("/cromwell_root/out.txt")
+        File artificial_output = "/cromwell_root/out.txt"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
@@ -179,7 +179,7 @@ task MergeIndividuals {
         String bucket_dir
         Int split_multiallelics
         Int n_cpus
-        Array[Int] artificial_input
+        Array[File] artificial_input
     }
     parameter_meta {
         bucket_dir: "Containing all the <.vcf.gz> files produced by trgt."
