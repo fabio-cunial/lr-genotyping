@@ -68,7 +68,7 @@ task LocalAssemblyImpl {
         cat *.fastq > all.fastq
         
         # Assembling all BAMs
-        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length ~{k} --input-ref-file all.fastq --output-file bifrost
+        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length ~{k} --input-seq-file all.fastq --output-file bifrost
         ls -laht
         #${TIME_COMMAND} hifiasm -t ${N_THREADS} -o all all.fastq
         #tar -czf all.tar.gz *.gfa
