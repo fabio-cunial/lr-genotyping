@@ -159,6 +159,15 @@ RUN wget https://github.com/chhylp123/hifiasm/archive/refs/tags/${hifiasm_versio
     && cd ${work_dir} \
     && rm -rf hifiasm-${hifiasm_version} \
     && hifiasm -h
+    
+# BIFROST
+RUN git clone https://github.com/pmelsted/bifrost.git \
+    && cd bifrost \
+    && mkdir build \
+    && cd build \
+    && cmake -DMAX_KMER_SIZE=1024 .. \
+    && make \
+    && make install
 
 # ADDITIONAL FILES
 COPY preprocess_vcf.py .

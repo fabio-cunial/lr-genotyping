@@ -49,6 +49,7 @@ task LocalAssemblyImpl {
         N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
         N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
+        BIFROST_COMMAND="/bifrost/build/src/Bifrost"
         
         # Downloading all BAMs
         while read REMOTE_FILE; do
@@ -62,7 +63,10 @@ task LocalAssemblyImpl {
             rm -f ${INDIVIDUAL}.bam
         done < ~{bams_list}
         cat *.fastq > all.fastq
-        ${TIME_COMMAND} hifiasm -t ${N_THREADS} -o all all.fastq
+        
+        # Assembling all BAMs
+        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length 127 --input-ref-file all.fastq --output-file bifrost_127.gfa
+        #${TIME_COMMAND} hifiasm -t ${N_THREADS} -o all all.fastq
         tar -czf all.tar.gz *.gfa
     >>>
 
