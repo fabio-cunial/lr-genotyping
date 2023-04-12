@@ -65,15 +65,14 @@ task LocalAssemblyImpl {
         cat *.fastq > all.fastq
         
         # Assembling all BAMs
-        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length 127 --input-ref-file all.fastq --output-file bifrost_127.gfa
+        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length 127 --input-ref-file all.fastq --output-file bifrost
         ls -laht
-        tar -czf all.tar.gz bifrost_127.gfa
         #${TIME_COMMAND} hifiasm -t ${N_THREADS} -o all all.fastq
         #tar -czf all.tar.gz *.gfa
     >>>
 
     output {
-        File assembly = work_dir + "/all.tar.gz"
+        File assembly = work_dir + "/bifrost.gfa.gz"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
