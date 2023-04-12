@@ -156,11 +156,11 @@ task TrgtImpl {
             done
             rm -f ${INDIVIDUAL}*
         done < ~{chunk}
-        echo "1" > out.txt
+        echo 1 > /out.txt
     >>>
 
     output {
-        Int artificial_output = read_int(work_dir + "/out.txt")
+        Int artificial_output = read_int("/out.txt")
     }
     runtime {
         docker: "fcunial/lr-genotyping"
