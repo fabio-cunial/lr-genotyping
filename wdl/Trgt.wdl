@@ -302,7 +302,7 @@ task TrgtImpl2 {
         samtools sort -@ ${N_THREADS} -o all.spanning.bam tmp.spanning.bam
         rm -f tmp.spanning.bam
         samtools index all.spanning.bam
-        ${TIME_COMMAND} ~{docker_dir}trvz --plot-type waterfall --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf all.vcf.gz --spanning-reads all.spanning.bam --repeat-id id --image all.svg || echo "trvz failed"
+        ${TIME_COMMAND} ~{docker_dir}trvz --genome ~{reference_fa} --repeats ~{repeats_bed} --vcf all.vcf.gz --spanning-reads all.spanning.bam --repeat-id id --image all.svg || echo "trvz failed"
         while : ; do
             TEST=$(gsutil -m ${GSUTIL_UPLOAD_THRESHOLD} cp 'all*' ~{bucket_dir}/ && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
