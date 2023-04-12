@@ -7,6 +7,7 @@ workflow LocalAssembly {
     input {
         String region
         File bam_addresses
+        Int k
         Int n_cpus
     }
     parameter_meta {
@@ -16,6 +17,7 @@ workflow LocalAssembly {
         input:
             bams_list = bam_addresses,
             region = region,
+            k = k,
             n_cpus = n_cpus
     }
 }
@@ -26,6 +28,7 @@ task LocalAssemblyImpl {
     input {
         File bams_list
         String region
+        Int k
         Int n_cpus
     }
     parameter_meta {
@@ -65,7 +68,7 @@ task LocalAssemblyImpl {
         cat *.fastq > all.fastq
         
         # Assembling all BAMs
-        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length 127 --input-ref-file all.fastq --output-file bifrost
+        ${TIME_COMMAND} ${BIFROST_COMMAND} build --threads ${N_THREADS} --kmer-length ~{k} --input-ref-file all.fastq --output-file bifrost
         ls -laht
         #${TIME_COMMAND} hifiasm -t ${N_THREADS} -o all all.fastq
         #tar -czf all.tar.gz *.gfa
