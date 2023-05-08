@@ -30,3 +30,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/LocalAssembly.wdl
   testParameterFiles:
+- name: BAMtracks
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/BAMtracks.wdl
+  testParameterFiles:
