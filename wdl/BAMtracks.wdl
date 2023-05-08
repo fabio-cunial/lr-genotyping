@@ -100,9 +100,11 @@ task BAMtracksImpl {
                 ${TIME_COMMAND} samtools view --threads ${N_THREADS} ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam
             fi
             ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length}
-            rm -f ${INDIVIDUAL}.sam
-            cut -d , -f 1,2 ./${INDIVIDUAL}.tracks > prefix.txt
-            cut -d , -f 3,7 ./${INDIVIDUAL}.tracks | paste -d , table.txt -
+            head ./${INDIVIDUAL}.tracks
+            cut -d , -f 1-2 ./${INDIVIDUAL}.tracks > prefix.txt
+            cut -d , -f 3-7 ./${INDIVIDUAL}.tracks | paste -d , table.txt - > tmp.txt
+            mv tmp.txt table.txt
+            rm -f ${INDIVIDUAL}.*
         done < ~{chunk}
     >>>
 
