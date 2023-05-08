@@ -121,7 +121,7 @@ public class BAMtracks {
 		// Scanning the reference
 		br = new BufferedReader(new FileReader(SAM_FILE));
 		bw = new BufferedWriter(new FileWriter(OUTPUT_FILE));
-		nAlignments=0; currentContig=1; currentStart=1; lastAlignment=-1; 
+		nAlignments=0; currentContig=-1; currentStart=1; lastAlignment=-1; 
 		str=br.readLine();
 		while (str!=null) {
 			nAlignments++;
@@ -142,7 +142,7 @@ public class BAMtracks {
 				continue;
 			}
 			if (contig!=currentContig) {
-                getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
+                if (currentContig!=-1) getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
 				lastAlignment=-1; currentContig=contig; currentStart=1;
 			}
 			else {
