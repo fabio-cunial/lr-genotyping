@@ -94,10 +94,10 @@ task BAMtracksImpl {
         touch prefix.txt table.txt
         while read REMOTE_FILE; do
             INDIVIDUAL=$( basename ${REMOTE_FILE} .bam )
-            TEST=$(samtools view --threads ${N_THREADS} -H ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam && echo 0 || echo 1)
+            TEST=$(samtools view --threads ${N_THREADS} ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam && echo 0 || echo 1)
             if [ ${TEST} -eq 1 ]; then
                 export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
-                samtools view --threads ${N_THREADS} -H ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam
+                ${TIME_COMMAND} samtools view --threads ${N_THREADS} ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam
             fi
             ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length}
             rm -f ${INDIVIDUAL}.sam
