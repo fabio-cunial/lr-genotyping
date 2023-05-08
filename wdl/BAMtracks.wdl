@@ -85,6 +85,10 @@ task BAMtracksImpl {
     command <<<
         set -euxo pipefail
         
+        TIME_COMMAND="/usr/bin/time --verbose"
+        N_SOCKETS="$(lscpu | grep '^Socket(s):' | awk '{print $NF}')"
+        N_CORES_PER_SOCKET="$(lscpu | grep '^Core(s) per socket:' | awk '{print $NF}')"
+        N_THREADS=$(( ${N_SOCKETS} * ${N_CORES_PER_SOCKET} ))
         export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
         
         touch prefix.txt table.txt
@@ -95,7 +99,7 @@ task BAMtracksImpl {
                 export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
                 samtools view --threads ${N_THREADS} -H ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam
             fi
-            java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length}
+            ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length}
             rm -f ${INDIVIDUAL}.sam
             cut -d , -f 1,2 ./${INDIVIDUAL}.tracks > prefix.txt
             cut -d , -f 3,7 ./${INDIVIDUAL}.tracks | paste -d , table.txt -
