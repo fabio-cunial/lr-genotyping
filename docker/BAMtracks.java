@@ -86,7 +86,9 @@ public class BAMtracks {
 	
 	
 	/**
-	 *
+	 * @param args
+     * 5: if the SAM file contains only alignments to a single chromosome, the
+     * length of such chromosome (-1 otherwise).
 	 */
 	public static void main(String[] args) throws IOException {
 		int i, p, q;
@@ -102,6 +104,7 @@ public class BAMtracks {
         WINDOW_LENGTH=Integer.parseInt(args[2]);
         WINDOW_STEP=Integer.parseInt(args[3]);
         KMER_LENGTH=Integer.parseInt(args[4]);
+        final int CHROMOSOME_LENGTH=Integer.parseInt(args[5]);
 		
 		// Allocating memory
 		alignments = new Alignment[50];  // Arbitrary
@@ -164,6 +167,11 @@ public class BAMtracks {
 			str=br.readLine();
 		}
         getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
+        currentStart+=WINDOW_STEP;
+        while (currentStart<CHROMOSOME_LENGTH) {
+            bw.write(currentContig+","+currentStart+",0,0,0,0,0\n");
+            currentStart+=WINDOW_STEP;
+        }
 		br.close(); bw.close();
 	}
 
@@ -275,7 +283,7 @@ public class BAMtracks {
                 if (distance<minDistance) minDistance=distance;
             }
             if (minDistance==Integer.MAX_VALUE) {  // Isolated event
-                maxIns=-1;
+                maxClip=-1;
                 break;
             }
             else if (minDistance>maxClip) maxClip=minDistance;
