@@ -6,6 +6,7 @@ version 1.0
 workflow BAMtracks {
     input {
         String region
+        Int chromosome_length
         File bam_addresses
         Int window_length
         Int window_step
@@ -27,6 +28,7 @@ workflow BAMtracks {
             input:
                 chunk = chunk_file,
                 region = region,
+                chromosome_length = chromosome_length,
                 window_length = window_length,
                 window_step = window_step,
                 kmer_length = kmer_length
@@ -74,6 +76,7 @@ task BAMtracksImpl {
     input {
         File chunk
         String region
+        Int chromosome_length
         Int window_length
         Int window_step
         Int kmer_length
@@ -99,7 +102,7 @@ task BAMtracksImpl {
                 export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
                 ${TIME_COMMAND} samtools view --threads ${N_THREADS} ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam
             fi
-            ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length}
+            ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length} ~{chromosome_length}
             head ./${INDIVIDUAL}.tracks
             cut -d , -f 1-2 ./${INDIVIDUAL}.tracks > prefix.txt
             cut -d , -f 3-7 ./${INDIVIDUAL}.tracks | paste -d , table.txt - > tmp.txt
