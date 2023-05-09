@@ -5,8 +5,7 @@ import javax.imageio.*;
 
 
 /**
- * chr21 length=46709983
- * chr22 length=50818468
+ * 
  */
 public class BAMtracksPrint {
     

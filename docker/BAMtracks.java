@@ -89,6 +89,14 @@ public class BAMtracks {
 	 * @param args
      * 5: if the SAM file contains only alignments to a single chromosome, the
      * length of such chromosome (-1 otherwise).
+     *
+     * GRCh38:
+     * chr21 length=46709983
+     * chr22 length=50818468
+     *
+     * T2T:
+     * chr21 length=45090682
+     * chr22 length=51324926
 	 */
 	public static void main(String[] args) throws IOException {
 		int i, p, q;
