@@ -21,9 +21,9 @@ public class BAMtracks {
     private static final int MIN_CLIP_LENGTH = SV_LENGTH;
     
 	/**
-	 * SAM records with QUAL field smaller than this are discarded. In practice 
-	 * the distribution of QUAL values peaks at 0 and 60, and it has very small 
-	 * mass between these values.
+	 * SAM records with QUAL field smaller than this contribute only to the 
+     * quality track. In practice the distribution of QUAL values peaks at 0 and
+     * 60, and it has very small mass between these values.
 	 */
 	private static final int QUAL_MIN = 1;
 	
@@ -59,6 +59,11 @@ public class BAMtracks {
     private static final int INS_POS = 2;
     private static final int CLIP_LEFT = 3;  // The alignment is on the left
     private static final int CLIP_RIGHT = 4;  // The alignment is on the right
+    
+    /**
+     * Number of signals reported in output, per sample.
+     */
+    public static final int N_SIGNALS = 11;
 	
 	/**
 	 * All the BAM records that intersect the current window
@@ -83,12 +88,11 @@ public class BAMtracks {
     private static HashMap<Kmer,Kmer> map;
     private static Kmer[] kmerPool, kmerVector;
     private static int[] coverageHistogram;
+    private static double[] qualityHistogram;
 	
 	
 	/**
-	 * @param args
-     * 5: if the SAM file contains only alignments to a single chromosome, the
-     * length of such chromosome (-1 otherwise).
+	 * Given a region of a chromosome, prints window-based statistics over it.
      *
      * GRCh38:
      * chr21 length=46709983
@@ -108,13 +112,16 @@ public class BAMtracks {
 		
 		// Parsing the input
 		final String SAM_FILE = args[0];  // Sorted
-		final String OUTPUT_FILE = args[1];
-        WINDOW_LENGTH=Integer.parseInt(args[2]);
-        WINDOW_STEP=Integer.parseInt(args[3]);
-        KMER_LENGTH=Integer.parseInt(args[4]);
-        final int CHROMOSOME_LENGTH=Integer.parseInt(args[5]);
+        final String CHROMOSOME_ID = args[1];
+        final int FROM_POS = Integer.parseInt(args[2]);  // 1-based
+        final int TO_POS = Integer.parseInt(args[3]);  // 1-based
+        WINDOW_LENGTH=Integer.parseInt(args[4]);
+        WINDOW_STEP=Integer.parseInt(args[5]);
+        KMER_LENGTH=Integer.parseInt(args[6]);
+		final String OUTPUT_FILE = args[7];
 		
 		// Allocating memory
+        currentContig=string2contig(CHROMOSOME_ID);
 		alignments = new Alignment[50];  // Arbitrary
 		for (i=0; i<alignments.length; i++) alignments[i] = new Alignment();
         del = new int[400];  // Arbitrary
@@ -128,11 +135,12 @@ public class BAMtracks {
         for (i=0; i<kmerPool.length; i++) kmerPool[i] = new Kmer();
         kmerVector = new Kmer[100];  // Arbitrary
         coverageHistogram = new int[WINDOW_LENGTH];
+        qualityHistogram = new double[WINDOW_LENGTH];
 		
 		// Scanning the reference
 		br = new BufferedReader(new FileReader(SAM_FILE));
 		bw = new BufferedWriter(new FileWriter(OUTPUT_FILE));
-		nAlignments=0; currentContig=-1; currentStart=1; lastAlignment=-1; 
+		nAlignments=0; currentStart=FROM_POS; lastAlignment=-1; 
 		str=br.readLine();
 		while (str!=null) {
 			nAlignments++;
@@ -146,23 +154,28 @@ public class BAMtracks {
 			contig=string2contig(str.substring(p+1,q));
 			p=q+1; q=str.indexOf(SAM_SEPARATOR,p+1);
 			position=Integer.parseInt(str.substring(p,q));
+			if (contig<currentContig) {
+                str=br.readLine();
+                continue;
+			}
+            else if (contig>currentContig || position>TO_POS) {
+                getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
+                currentStart+=WINDOW_STEP;
+                while (currentStart<TO_POS) {
+                    bw.write(currentContig+","+currentStart);
+                    for (i=0; i<N_SIGNALS; i++) bw.write(",0");
+                    bw.newLine();
+                    currentStart+=WINDOW_STEP;
+                }
+                break;
+            }
+            while (position>currentStart+WINDOW_LENGTH-1) {
+				getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
+				currentStart+=WINDOW_STEP;
+				filterAlignments(currentStart);
+            }
 			p=q+1; q=str.indexOf(SAM_SEPARATOR,p+1);
 			quality=Integer.parseInt(str.substring(p,q));
-			if (quality<QUAL_MIN) {
-				str=br.readLine();
-				continue;
-			}
-			if (contig!=currentContig) {
-                if (currentContig!=-1) getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
-				lastAlignment=-1; currentContig=contig; currentStart=1;
-			}
-			else {
-                while (position>currentStart+WINDOW_LENGTH-1) {
-    				getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
-    				currentStart+=WINDOW_STEP;
-    				filterAlignments(currentStart);
-                }
-			}
             p=q+1; q=str.indexOf(SAM_SEPARATOR,p+1);
             cigar=str.substring(p,q);
             p=str.indexOf(SAM_SEPARATOR,q+1);
@@ -170,21 +183,19 @@ public class BAMtracks {
             p=str.indexOf(SAM_SEPARATOR,p+1);
             q=str.indexOf(SAM_SEPARATOR,p+1);
             seq=str.substring(p+1,q);
-			appendAlignment(position,cigar,seq);
+			appendAlignment(position,cigar,seq,quality,FROM_POS,TO_POS);
 			if (nAlignments%10000==0) System.err.println("Processed "+nAlignments+" alignments");
 			str=br.readLine();
 		}
-        getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
-        currentStart+=WINDOW_STEP;
-        while (currentStart<CHROMOSOME_LENGTH) {
-            bw.write(currentContig+","+currentStart+",0,0,0,0,0\n");
-            currentStart+=WINDOW_STEP;
-        }
 		br.close(); bw.close();
 	}
 
 	
-	private static final void appendAlignment(int position, String cigar, String seq) {
+    /**
+     * @param fromPos,toPos alignments that do not intersect $[fromPos..toPos]$
+     * in the reference (1-based) are not appended.
+     */
+	private static final void appendAlignment(int position, String cigar, String seq, int quality, int fromPos, int toPos) {
 		int i;
 		final int alignmentsLength = alignments.length;
 		
@@ -195,7 +206,8 @@ public class BAMtracks {
 			for (i=alignmentsLength; i<newArray.length; i++) newArray[i] = new Alignment();
 			alignments=newArray;
 		}
-		alignments[lastAlignment].set(position,cigar,seq);
+		alignments[lastAlignment].set(position,cigar,seq,quality);
+        if (alignments[lastAlignment].endA<fromPos || alignments[lastAlignment].startA>toPos) lastAlignment--;
 	}
 	
 	
@@ -228,29 +240,50 @@ public class BAMtracks {
      * the window. The procedure outputs 0 iff there is no event of a given type 
      * in the window; it outputs -1 iff there is an event with no neighbor on a
      * different alignment.
+     *
+     * @param currentStart 1-based.
      */
     private static final void getTracks(int currentContig, int currentStart, BufferedWriter bw, boolean canonizeKmers) throws IOException {
         boolean isolated;
         int i, j;
         int dx, dy;
-        double sum, distance, minDistance, maxDel, maxIns, maxClip, maxKmer, avgCoverage;
+        int nDelStart, nDelEnd, nIns, nClipLeft, nClipRight;
+        double sum, distance, minDistance, maxDel, maxIns, maxClip, maxKmer, avgCoverage, avgQuality;
         
         if (lastAlignment==-1) {
-            bw.write(currentContig+","+currentStart+",0,0,0,0,0\n");
+            bw.write(currentContig+","+currentStart);
+            for (i=0; i<N_SIGNALS; i++) bw.write(",0");
+            bw.newLine();
             return;
         }
         
-        // Collecting events (in no particular order).
+        // Computing avg. quality using all alignments.
+        Arrays.fill(coverageHistogram,0); Arrays.fill(qualityHistogram,0.0);
+        for (i=0; i<=lastAlignment; i++) alignments[i].addQualities(currentStart,coverageHistogram,qualityHistogram);
+        avgCoverage=0.0; avgQuality=0.0;
+        for (i=0; i<WINDOW_LENGTH; i++) {
+            avgCoverage+=coverageHistogram[i];
+            avgQuality+=qualityHistogram[i];
+        }
+        if (avgCoverage==0) avgQuality=0;
+        else avgQuality/=avgCoverage;
+        
+        // Collecting events, in no particular order, using just high-quality
+        // alignments.
         del_last=-1; ins_last=-1; clip_last=-1; kmerVectors_last=-1;
         Arrays.fill(coverageHistogram,0);
-        for (i=0; i<=lastAlignment; i++) alignments[i].addEvents(currentStart,i,canonizeKmers,coverageHistogram);
+        for (i=0; i<=lastAlignment; i++) {
+            if (alignments[i].quality>=QUAL_MIN) alignments[i].addEvents(currentStart,i,canonizeKmers,coverageHistogram);
+        }
         avgCoverage=0.0;
         for (i=0; i<WINDOW_LENGTH; i++) avgCoverage+=coverageHistogram[i];
         avgCoverage/=WINDOW_LENGTH;
         
         // DEL
-        maxDel=0.0;
+        maxDel=0.0; nDelStart=0; nDelEnd=0;
         for (i=0; i<=del_last; i+=4) {
+            if (del[i]==DEL_START) nDelStart++;
+            else if (del[i]==DEL_END) nDelEnd++;
             minDistance=Integer.MAX_VALUE;
             for (j=0; j<=del_last; j+=4) {
                 if (j==i || del[j+3]==del[i+3] || del[j]!=del[i]) continue;
@@ -265,7 +298,7 @@ public class BAMtracks {
             else if (minDistance>maxDel) maxDel=minDistance;
         }
         // INS
-        maxIns=0.0;
+        maxIns=0.0; nIns=ins_last+1;
         for (i=0; i<=ins_last; i+=3) {
             minDistance=Integer.MAX_VALUE;
             for (j=0; j<=ins_last; j+=3) {
@@ -281,8 +314,10 @@ public class BAMtracks {
             else if (minDistance>maxIns) maxIns=minDistance;
         }
         // CLIP
-        maxClip=0.0;
+        maxClip=0.0; nClipLeft=0; nClipRight=0;
         for (i=0; i<=clip_last; i+=3) {
+            if (clip[i]==CLIP_LEFT) nClipLeft++;
+            else if (clip[i]==CLIP_RIGHT) nClipRight++;
             minDistance=Integer.MAX_VALUE;
             for (j=0; j<=clip_last; j+=3) {
                 if (j==i || clip[j+2]==clip[i+2] || clip[j]!=clip[i]) continue;
@@ -320,7 +355,7 @@ public class BAMtracks {
             }
         }
         
-        bw.write(currentContig+","+currentStart+","+maxDel+","+maxIns+","+maxClip+","+maxKmer+","+avgCoverage+"\n");
+        bw.write(currentContig+","+currentStart+","+maxDel+","+maxIns+","+maxClip+","+maxKmer+","+avgCoverage+","+avgQuality+","+nDelStart+","+nDelEnd+","+nIns+","+nClipLeft+","+nClipRight+"\n");
     }
     
     
@@ -333,7 +368,7 @@ public class BAMtracks {
 		 * CIGAR string, and projection of the alignment on it (0-based).
 		 */
         public String cigar;
-		public int startCigar, endCigar;
+		public int startCigar, endCigar, quality;
 		
 		/**
 		 * Projection of the alignment on the contig (A), 1-based.
@@ -353,7 +388,7 @@ public class BAMtracks {
         public int leftClip, rightClip;
 		
 		
-		public final void set(int position, String cigar, String seq) {
+		public final void set(int position, String cigar, String seq, int quality) {
 			this.cigar=cigar; this.seq=seq.toLowerCase();
             startA=position;
             cigar_prefixClip(cigar,tmpArray);
@@ -362,6 +397,7 @@ public class BAMtracks {
 			endCigar=tmpArray[0]; endA=startA+tmpArray[1]-1; endB=startB+tmpArray[2]-1;
             cigar_suffixClip(cigar,tmpArray);
             rightClip=tmpArray[0];
+            this.quality=quality;
 		}
 		
         
@@ -369,6 +405,8 @@ public class BAMtracks {
          * Adds to the global lists all alignment events that fall in the window
          * $[referenceFrom .. referenceFrom+WINDOW_LENGTH-1]$. The procedure 
          * ignores mismatches, and indels shorter than $SV_LENGTH$.
+         *
+         * @param referenceFrom 1-based.
 		 */
 		public final void addEvents(int referenceFrom, int alignmentID, boolean canonizeKmers, int[] coverageHistogram) {
 			char c;
@@ -425,6 +463,25 @@ public class BAMtracks {
                 }
 			}
 		}
+        
+        
+        /**
+         * @param referenceFrom 1-based;
+         * @param coverageHistogram the procedure assumes coverage one for every
+         * position in $[startA..endA]$, i.e. it does not take deletions into
+         * account.
+         */
+        public final void addQualities(int referenceFrom, int[] coverageHistogram, double[] qualityHistogram) {
+            int i;
+            final int referenceTo = referenceFrom+WINDOW_LENGTH-1;
+            
+            for (i=startA; i<=endA; i++) {
+                if (i<referenceFrom) continue;
+                if (i>referenceTo) break;
+                coverageHistogram[i-referenceFrom]++;
+                qualityHistogram[i-referenceFrom]+=quality;
+            }
+        }
         
         
 		public String toString() {

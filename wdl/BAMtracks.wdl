@@ -5,12 +5,14 @@ version 1.0
 #
 workflow BAMtracks {
     input {
-        String region
-        Int chromosome_length
+        String chromosome
+        Int start
+        Int end
         File bam_addresses
         Int window_length
         Int window_step
         Int kmer_length
+        Int n_signals
         Int n_nodes
     }
     parameter_meta {
@@ -27,11 +29,13 @@ workflow BAMtracks {
         call BAMtracksImpl { 
             input:
                 chunk = chunk_file,
-                region = region,
-                chromosome_length = chromosome_length,
+                chromosome = chromosome,
+                start = start,
+                end = end,
                 window_length = window_length,
                 window_step = window_step,
-                kmer_length = kmer_length
+                kmer_length = kmer_length,
+                n_signals = n_signals
         }
     }
     call PasteTracks {
@@ -75,11 +79,13 @@ task GetChunks {
 task BAMtracksImpl {
     input {
         File chunk
-        String region
-        Int chromosome_length
+        String chromosome
+        Int start
+        Int end
         Int window_length
         Int window_step
         Int kmer_length
+        Int n_signals
     }
     parameter_meta {
         chunk: "A list of remote BAM file addresses."
@@ -102,10 +108,11 @@ task BAMtracksImpl {
                 export GCS_OAUTH_TOKEN=$(gcloud auth print-access-token)
                 ${TIME_COMMAND} samtools view --threads ${N_THREADS} ${REMOTE_FILE} ~{region} > ${INDIVIDUAL}.sam
             fi
-            ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ./${INDIVIDUAL}.tracks ~{window_length} ~{window_step} ~{kmer_length} ~{chromosome_length}
+            ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ~{chromosome} ~{start} ~{end} ~{window_length} ~{window_step} ~{kmer_length} ./${INDIVIDUAL}.tracks
             head ./${INDIVIDUAL}.tracks
             cut -d , -f 1-2 ./${INDIVIDUAL}.tracks > prefix.txt
-            cut -d , -f 3-7 ./${INDIVIDUAL}.tracks | paste -d , table.txt - > tmp.txt
+            LAST_FIELD=$(( 2 + ~{n_signals} ))
+            cut -d , -f 3-${LAST_FIELD} ./${INDIVIDUAL}.tracks | paste -d , table.txt - > tmp.txt
             mv tmp.txt table.txt
             rm -f ${INDIVIDUAL}.*
         done < ~{chunk}
