@@ -145,11 +145,7 @@ public class BAMtracks {
 		while (str!=null) {
 			nAlignments++;
 			p=str.indexOf(SAM_SEPARATOR); q=str.indexOf(SAM_SEPARATOR,p+1);
-			flags=Integer.parseInt(str.substring(p+1,q));
-			if ((DISCARD_SECONDARY&&((flags&0x100)!=0)) || (DISCARD_SUPPLEMENTARY&&((flags&0x800)!=0)) || (flags&0x200)!=0 || (flags&0x400)!=0) {
-				str=br.readLine();
-				continue;
-			}
+            flags=Integer.parseInt(str.substring(p+1,q));
 			p=q; q=str.indexOf(SAM_SEPARATOR,p+1);
 			contig=string2contig(str.substring(p+1,q));
 			p=q+1; q=str.indexOf(SAM_SEPARATOR,p+1);
@@ -161,12 +157,6 @@ public class BAMtracks {
             else if (contig>currentContig || position>TO_POS) {
                 getTracks(currentContig,currentStart,bw,CANONIZE_KMERS);
                 currentStart+=WINDOW_STEP;
-                while (currentStart<TO_POS) {
-                    bw.write(currentContig+","+currentStart);
-                    for (i=0; i<N_SIGNALS; i++) bw.write(",0");
-                    bw.newLine();
-                    currentStart+=WINDOW_STEP;
-                }
                 break;
             }
             while (position>currentStart+WINDOW_LENGTH-1) {
@@ -183,10 +173,16 @@ public class BAMtracks {
             p=str.indexOf(SAM_SEPARATOR,p+1);
             q=str.indexOf(SAM_SEPARATOR,p+1);
             seq=str.substring(p+1,q);
-			appendAlignment(position,cigar,seq,quality,FROM_POS,TO_POS);
+			appendAlignment(position,cigar,seq,quality,FROM_POS,TO_POS,flags);
 			if (nAlignments%10000==0) System.err.println("Processed "+nAlignments+" alignments");
 			str=br.readLine();
 		}
+        while (currentStart<=TO_POS) {
+            bw.write(currentContig+","+currentStart);
+            for (i=0; i<N_SIGNALS; i++) bw.write(",0");
+            bw.newLine();
+            currentStart+=WINDOW_STEP;
+        }
 		br.close(); bw.close();
 	}
 
@@ -195,10 +191,11 @@ public class BAMtracks {
      * @param fromPos,toPos alignments that do not intersect $[fromPos..toPos]$
      * in the reference (1-based) are not appended.
      */
-	private static final void appendAlignment(int position, String cigar, String seq, int quality, int fromPos, int toPos) {
+	private static final void appendAlignment(int position, String cigar, String seq, int quality, int fromPos, int toPos, int flags) {
 		int i;
 		final int alignmentsLength = alignments.length;
 		
+		if ((DISCARD_SECONDARY&&((flags&0x100)!=0)) || (DISCARD_SUPPLEMENTARY&&((flags&0x800)!=0)) || (flags&0x200)!=0 || (flags&0x400)!=0) return;
 		lastAlignment++;
 		if (lastAlignment==alignmentsLength) {
 			Alignment[] newArray = new Alignment[alignmentsLength<<1];

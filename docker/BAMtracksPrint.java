@@ -23,8 +23,12 @@ public class BAMtracksPrint {
         final String INPUT_FILE = args[0];
         final int SIGNAL = Integer.parseInt(args[1]);
         final boolean USE_LOG = Integer.parseInt(args[2])==1;
-        final String OUTPUT_FILE_IMAGE = args[3];
-        final String OUTPUT_FILE_HISTOGRAM = args[4];
+        final int N_SAMPLES_TOTAL = Integer.parseInt(args[3]);
+        final String OUTPUT_FILE_IMAGE = args[4];
+        final String OUTPUT_FILE_HISTOGRAM = args[5];
+        
+        final int N_COORDINATE_COLUMNS = 2;
+        final int N_COLUMNS = N_COORDINATE_COLUMNS+N_SAMPLES_TOTAL*BAMtracks.N_SIGNALS;
         
         int i, x, y, n;
         int nRows, nColumns, length, maxRow, maxColumn;
@@ -45,6 +49,11 @@ public class BAMtracksPrint {
             nColumns++;
             tokens=str.split(",");
             length=tokens.length;
+            if (length!=N_COLUMNS) {
+                System.err.println("nTokens anomalous: "+length+" instead of the expected "+N_COLUMNS+", window "+(nColumns-1)+"-th");
+                str=br.readLine();
+                continue;
+            }
             for (i=2+SIGNAL; i<length; i+=BAMtracks.N_SIGNALS) {
                 if (tokens[i].length()==0) continue;
                 value=Double.parseDouble(tokens[i]);
@@ -63,7 +72,13 @@ public class BAMtracksPrint {
         x=-1;
         while (str!=null) {
             x++;
-            tokens=str.split(","); length=tokens.length; sum=0.0; n=0;
+            tokens=str.split(","); length=tokens.length; 
+            if (length!=N_COLUMNS) {
+                System.err.println("nTokens anomalous: "+length+" instead of the expected "+N_COLUMNS+", window "+x+"-th");
+                str=br.readLine();
+                continue;
+            }
+            sum=0.0; n=0;
             for (i=2+SIGNAL; i<length; i+=BAMtracks.N_SIGNALS) {
                 n++;
                 if (tokens[i].length()==0) {
@@ -74,14 +89,15 @@ public class BAMtracksPrint {
                 sum+=value;
                 image.setRGB(x,(i-2)/BAMtracks.N_SIGNALS,getColor(value,max,USE_LOG));
             }
-            average=sum/n; stddev=0.0;
+            average=sum/n; sum=0.0;
             for (i=2+SIGNAL; i<length; i+=BAMtracks.N_SIGNALS) {
-                if (tokens[i].length()==0) stddev+=average*average;
+                if (tokens[i].length()==0) sum+=average*average;
                 else {
                     value=Double.parseDouble(tokens[i]);
-                    stddev+=(value-average)*(value-average);
+                    sum+=(value-average)*(value-average);
                 }
             }
+            stddev=sum/n;
             bw.write(sum+","+average+","+Math.sqrt(stddev)); bw.newLine();
             str=br.readLine();
         }

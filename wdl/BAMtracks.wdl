@@ -18,6 +18,7 @@ workflow BAMtracks {
     parameter_meta {
         bam_addresses: "File containing a list of bucket addresses."
         n_nodes: "Use this number of nodes to regenotype in parallel."
+        n_signals: "As defined in <BAMtracks.java>."
     }
     
     call GetChunks {
@@ -89,6 +90,7 @@ task BAMtracksImpl {
     }
     parameter_meta {
         chunk: "A list of remote BAM file addresses."
+        n_signals: "As defined in <BAMtracks.java>."
     }
 
     command <<<
@@ -109,7 +111,8 @@ task BAMtracksImpl {
                 ${TIME_COMMAND} samtools view --threads ${N_THREADS} ${REMOTE_FILE} ~{chromosome}:~{start}-~{end} > ${INDIVIDUAL}.sam
             fi
             ${TIME_COMMAND} java -cp / BAMtracks ./${INDIVIDUAL}.sam ~{chromosome} ~{start} ~{end} ~{window_length} ~{window_step} ~{kmer_length} ./${INDIVIDUAL}.tracks
-            head ./${INDIVIDUAL}.tracks
+            wc -l ./${INDIVIDUAL}.tracks
+            sed 's/[^,]//g' ./${INDIVIDUAL}.tracks | sort | uniq
             cut -d , -f 1-2 ./${INDIVIDUAL}.tracks > prefix.txt
             LAST_FIELD=$(( 2 + ~{n_signals} ))
             cut -d , -f 3-${LAST_FIELD} ./${INDIVIDUAL}.tracks | paste -d , table.txt - > tmp.txt
