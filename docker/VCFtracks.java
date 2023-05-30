@@ -48,7 +48,7 @@ public class VCFtracks {
     /**
      * Number of signals reported in output
      */
-    public static final int N_SIGNALS = 16;
+    public static final int N_SIGNALS = 21;
 	
 	/**
 	 * All the VCF records that intersect the current window
@@ -71,7 +71,7 @@ public class VCFtracks {
     private static StringBuilder sb;
     private static HashMap<Kmer,Kmer> map;
     private static Kmer[] kmerPool, kmerVector;
-    private static int[] coverageHistogram;
+    private static int[] coverageHistogram_del, coverageHistogram_ins, coverageHistogram_all;
 	
 	
 	/**
@@ -118,7 +118,9 @@ public class VCFtracks {
         kmerPool = new Kmer[100];  // Arbitrary
         for (i=0; i<kmerPool.length; i++) kmerPool[i] = new Kmer();
         kmerVector = new Kmer[100];  // Arbitrary
-        coverageHistogram = new int[WINDOW_LENGTH];
+        coverageHistogram_del = new int[WINDOW_LENGTH];
+        coverageHistogram_ins = new int[WINDOW_LENGTH];
+        coverageHistogram_all = new int[WINDOW_LENGTH];
 		
 		// Scanning the reference
 		br = new BufferedReader(new FileReader(VCF_FILE));
@@ -315,7 +317,8 @@ public class VCFtracks {
         int i, j;
         int dx, dy;
         int nDel, nDelStart, nDelEnd, nInv, nInvStart, nInvEnd, nDup, nDupStart, nDupEnd, nIns;
-        double sum, distance, minDistance, maxDel, maxInv, maxDup, maxIns, maxKmer, avgCoverage;
+        double p, sum, distance, minDistance, maxDel, maxInv, maxDup, maxIns, maxKmer;
+        double avgCoverage_del, avgCoverage_ins, avgCoverage_all, entropy_del, entropy_ins, entropy_all;
         
 
 // System.err.println("getTracks> Calls in ["+currentStart+"..:");
@@ -332,18 +335,46 @@ public class VCFtracks {
         // Collecting events, in no particular order.
         nDel=0; nInv=0; nDup=0;
         del_last=-1; inv_last=-1; dup_last=-1; ins_last=-1; kmerVectors_last=-1;
-        Arrays.fill(coverageHistogram,0);
+        Arrays.fill(coverageHistogram_del,0);
+        Arrays.fill(coverageHistogram_ins,0);
+        Arrays.fill(coverageHistogram_all,0);
         for (i=0; i<=lastCall; i++) {
-            calls[i].addEvents(currentStart,i,canonizeKmers,coverageHistogram);
+            calls[i].addEvents(currentStart,i,canonizeKmers);
             switch (calls[i].type) {
                 case TYPE_DELETION: nDel++; break;
                 case TYPE_INVERSION: nInv++; break;
                 case TYPE_DUPLICATION: nDup++; break;
             }
         }
-        avgCoverage=0.0;
-        for (i=0; i<WINDOW_LENGTH; i++) avgCoverage+=coverageHistogram[i];
-        avgCoverage/=WINDOW_LENGTH;
+        
+        // Coverage and entropy
+        sum=0.0;
+        for (i=0; i<WINDOW_LENGTH; i++) sum+=coverageHistogram_del[i];
+        avgCoverage_del=sum/WINDOW_LENGTH; entropy_del=0.0;
+        if (sum!=0) {
+            for (i=0; i<WINDOW_LENGTH; i++) {
+                p=coverageHistogram_del[i]/sum;
+                if (p!=0) entropy_del-=p*Math.log(p);
+            }
+        }
+        sum=0.0;
+        for (i=0; i<WINDOW_LENGTH; i++) sum+=coverageHistogram_ins[i];
+        avgCoverage_ins=avgCoverage_ins=sum/WINDOW_LENGTH; entropy_ins=0.0;
+        if (sum!=0) {
+            for (i=0; i<WINDOW_LENGTH; i++) {
+                p=coverageHistogram_ins[i]/sum;
+                if (p!=0) entropy_ins-=p*Math.log(p);
+            }
+        }
+        sum=0.0;
+        for (i=0; i<WINDOW_LENGTH; i++) sum+=coverageHistogram_all[i];
+        avgCoverage_all=sum/WINDOW_LENGTH; entropy_all=0.0;
+        if (sum!=0) {
+            for (i=0; i<WINDOW_LENGTH; i++) {
+                p=coverageHistogram_all[i]/sum;
+                if (p!=0) entropy_all-=p*Math.log(p);
+            }
+        }
         
         // DEL
         maxDel=0.0; nDelStart=0; nDelEnd=0;
@@ -434,7 +465,7 @@ public class VCFtracks {
             }
         }
         
-        bw.write(currentContig+","+currentStart+","+maxDel+","+maxInv+","+maxDup+","+maxIns+","+maxKmer+","+avgCoverage+","+nDel+","+nDelStart+","+nDelEnd+","+nInv+","+nInvStart+","+nInvEnd+","+nDup+","+nDupStart+","+nDupEnd+","+nIns+"\n");
+        bw.write(currentContig+","+currentStart+","+maxDel+","+maxInv+","+maxDup+","+maxIns+","+maxKmer+","+avgCoverage_del+","+avgCoverage_ins+","+avgCoverage_all+","+entropy_del+","+entropy_ins+","+entropy_all+","+nDel+","+nDelStart+","+nDelEnd+","+nInv+","+nInvStart+","+nInvEnd+","+nDup+","+nDupStart+","+nDupEnd+","+nIns+"\n");
     }
     
     
@@ -467,7 +498,7 @@ public class VCFtracks {
          *
          * @param referenceFrom 1-based.
 		 */
-		public final void addEvents(int referenceFrom, int alignmentID, boolean canonizeKmers, int[] coverageHistogram) {
+		public final void addEvents(int referenceFrom, int alignmentID, boolean canonizeKmers) {
             boolean addCoverage;
             int i;
             int from, to;
@@ -478,6 +509,9 @@ public class VCFtracks {
                 if (start>=referenceFrom && start<=referenceTo) addEvent(DEL_START,start,length);
                 if (end>=referenceFrom && end<=referenceTo) addEvent(DEL_END,end,length);
                 from=start; to=end; addCoverage=true;
+                if (from<referenceFrom) from=referenceFrom;
+                if (to>referenceTo) to=referenceTo;
+                for (i=from; i<=to; i++) coverageHistogram_del[i-referenceFrom]++;
             }
             else if (type==TYPE_INVERSION) {
                 if (start>=referenceFrom && start<=referenceTo) addEvent(INV_START,start,length);
@@ -493,11 +527,14 @@ public class VCFtracks {
                 if (start>=referenceFrom && start<=referenceTo) addEvent(INS_POS,start,length);
                 if (alt.charAt(0)!='<') addKmerVector(alt,1,length-1,canonizeKmers);
                 from=start-INS_SLACK; to=start+INS_SLACK; addCoverage=true;
+                if (from<referenceFrom) from=referenceFrom;
+                if (to>referenceTo) to=referenceTo;
+                for (i=from; i<=to; i++) coverageHistogram_ins[i-referenceFrom]++;
             }
             if (addCoverage) {
                 if (from<referenceFrom) from=referenceFrom;
                 if (to>referenceTo) to=referenceTo;
-                for (i=from; i<=to; i++) coverageHistogram[i-referenceFrom]++;
+                for (i=from; i<=to; i++) coverageHistogram_all[i-referenceFrom]++;
             }
 		}
         
