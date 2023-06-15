@@ -177,3 +177,16 @@ COPY svjedi_predict-genotype.py /opt/conda/bin/predict-genotype.py
 COPY svjedi_svjedi-graph.py /opt/conda/bin/svjedi-graph.py
 COPY *.java .
 RUN javac *.java
+
+# BEDTOOLS
+ARG bedtools_version=2.31.0
+RUN wget https://github.com/arq5x/bedtools2/releases/download/v${bedtools_version}/bedtools.static \
+    && mv ./bedtools.static ./bedtools \
+    && chmod +x ./bedtools
+
+# DELLY
+ARG delly_version=1.1.6
+RUN wget https://github.com/dellytools/delly/releases/download/v${delly_version}/delly_v${delly_version}_linux_x86_64bit \
+    && mv delly_v${delly_version}_linux_x86_64bit delly \
+    && chmod +x ./delly \
+    && ./delly

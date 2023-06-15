@@ -12,6 +12,7 @@ workflow Regenotype {
         Int use_cutesv
         Int use_sniffles2
         Int use_svjedigraph
+        Int use_delly
         String svjedigraph_bucket_dir
         File reference_fa
         File reference_fai
@@ -57,6 +58,7 @@ workflow Regenotype {
                 use_cutesv = use_cutesv,
                 use_sniffles2 = use_sniffles2,
                 use_svjedigraph = use_svjedigraph,
+                use_delly = use_delly,
                 svjedigraph_bucket_dir = svjedigraph_bucket_dir,
                 reference_fa = reference_fa,
                 reference_fai = reference_fai,
@@ -211,7 +213,7 @@ task GetChunks {
 # will have to be added to $vcf_to_genotype$ to create the final VCF (such
 # columns include the heading with sample ID).
 #
-# Remark: caller parameters are taken from "Comprehensive evaluation of
+# Remark: genotyper parameters are taken from "Comprehensive evaluation of
 # structural variant genotyping methods based on long-read sequencing data".
 #
 # Resource analysis for a VCF with just chr21 and 22. Node with 17 physical 
@@ -230,6 +232,7 @@ task RegenotypeChunk {
         Int use_cutesv
         Int use_sniffles2
         Int use_svjedigraph
+        Int use_delly
         String svjedigraph_bucket_dir
         File reference_fa
         File reference_fai
@@ -306,6 +309,10 @@ task RegenotypeChunk {
                 ${TIME_COMMAND} svjedi-graph.py --threads ${N_THREADS} --vcf ~{vcf_to_genotype} --ref ~{reference_fa} --reads ${LOCAL_FILE} --prefix ${GRAPH_FILE}
                 mv ${GRAPH_FILE}_genotype.vcf genotypes.vcf
                 rm -f *.gaf *.json
+            elif [ ~{use_delly} -eq 1 ]; then
+                ${TIME_COMMAND} /delly call --svtype ALL --genome ~{reference_fa} --vcffile ~{vcf_to_genotype} --outfile genotypes.bcf 
+                bcftools view --output-type v --output genotypes.vcf genotypes.bcf
+                rm -f genotypes.bcf
             fi
             N_LINES=$(grep '#' genotypes.vcf | wc -l)
             rm -f $(basename ${FILE}) && echo 0 || echo 1
