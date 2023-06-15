@@ -310,7 +310,7 @@ task RegenotypeChunk {
                 mv ${GRAPH_FILE}_genotype.vcf genotypes.vcf
                 rm -f *.gaf *.json
             elif [ ~{use_delly} -eq 1 ]; then
-                ${TIME_COMMAND} /delly call --svtype ALL --genome ~{reference_fa} --vcffile ~{vcf_to_genotype} --outfile genotypes.bcf 
+                ${TIME_COMMAND} /delly call --svtype ALL --genome ~{reference_fa} --vcffile ~{vcf_to_genotype} --outfile genotypes.bcf ${LOCAL_FILE}
                 bcftools view --output-type v --output genotypes.vcf genotypes.bcf
                 rm -f genotypes.bcf
             fi
