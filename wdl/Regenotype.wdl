@@ -312,7 +312,7 @@ task RegenotypeChunk {
             elif [ ~{use_delly} -eq 1 ]; then
                 ${TIME_COMMAND} /delly call --svtype ALL --genome ~{reference_fa} --vcffile ~{vcf_to_genotype} --outfile genotypes.bcf ${LOCAL_FILE}
                 bcftools view --output-type v --output genotypes.vcf genotypes.bcf
-                rm -f genotypes.bcf
+                #rm -f genotypes.bcf
             fi
             N_LINES=$(grep '#' genotypes.vcf | wc -l)
             rm -f $(basename ${FILE}) && echo 0 || echo 1
@@ -340,12 +340,14 @@ task RegenotypeChunk {
                 mv tmp.txt genotypes.txt; rm -f tmp.txt
             fi
             head genotypes.txt
+            touch genotypes.bcf
         done < ~{chunk}
     >>>
 
     output {
         File format = "format.txt"
         File genotypes = "genotypes.txt"
+        File debug = "genotypes.bcf"
     }
     runtime {
         docker: "fcunial/lr-genotyping"
